@@ -3,6 +3,14 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "scripts": {
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "install:all": "cd backend && npm install && cd ../frontend && npm install",
+    "build:frontend": "cd frontend && npm run build",
+    "lint:backend": "cd backend && npm run lint",
+    "test:apis": "cd backend && npm run test-apis"
+  },
   "devDependencies": {
     "@eslint/js": "^8.57.1",
     "eslint-plugin-react": "^7.37.2",

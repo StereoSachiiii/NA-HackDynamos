@@ -114,6 +114,8 @@ const connectDB = async () => {
       `MongoDB connected: ${connection.connection.host}/${connection.connection.name}`
     );
     isConnected = true;
+    // Set up connection event handlers
+    setupConnectionHandlers();
     return true;
   } catch (error) {
     lastError = error;
@@ -133,6 +135,8 @@ const connectDB = async () => {
           `MongoDB connected (using standard format): ${connection.connection.host}/${connection.connection.name}`
         );
         isConnected = true;
+        // Set up connection event handlers
+        setupConnectionHandlers();
         return true; // Success with fallback
       } catch (fallbackError) {
         lastError = fallbackError;
@@ -141,11 +145,31 @@ const connectDB = async () => {
     }
     
     // If we get here, all connection attempts failed
-    error = lastError;
+    const finalError = lastError;
     logger.error('MongoDB connection failed');
     
+    // Check for IP whitelist error specifically
+    const isIPWhitelistError = 
+      (finalError.message?.includes('IP') && finalError.message?.includes('whitelist')) ||
+      finalError.message?.includes('not allowed to connect');
+    
+    if (isIPWhitelistError) {
+      logger.error('');
+      logger.error('🚫 IP ADDRESS NOT WHITELISTED');
+      logger.error('');
+      logger.error('Your current IP address is not allowed to connect to MongoDB Atlas.');
+      logger.error('');
+      logger.error('To fix this:');
+      logger.error('1. Run: npm run check-ip');
+      logger.error('2. Copy your IP address from the output');
+      logger.error('3. Go to MongoDB Atlas → Network Access → Add IP Address');
+      logger.error('4. Add your IP and wait 1-2 minutes');
+      logger.error('5. Restart the server');
+      logger.error('');
+    }
+    
     // Provide helpful error messages
-    if (error.code === 'ENOTFOUND') {
+    if (finalError.code === 'ENOTFOUND') {
       logger.error(
         'DNS lookup failed. Check your MONGO_URI connection string format.'
       );
@@ -153,7 +177,7 @@ const connectDB = async () => {
         'Expected format: mongodb+srv://username:password@cluster0.xxxxx.mongodb.net/database?retryWrites=true&w=majority'
       );
       logger.error('Verify your cluster name matches in MongoDB Atlas.');
-    } else if (error.code === 'EAUTH' || error.message?.includes('bad auth') || error.message?.includes('Authentication failed')) {
+    } else if (finalError.code === 'EAUTH' || finalError.message?.includes('bad auth') || finalError.message?.includes('Authentication failed')) {
       logger.error('❌ Authentication failed!');
       logger.error('');
       logger.error('Possible issues:');
@@ -169,9 +193,9 @@ const connectDB = async () => {
       logger.error('');
       logger.error(`Attempted connection string (credentials hidden): ${connectionUri.replace(/:\/\/[^:]+:[^@]+@/, '://***:***@')}`);
     } else {
-      logger.error(`Error details: ${error.message}`);
-      if (error.stack && process.env.NODE_ENV === 'development') {
-        logger.error(`Stack: ${error.stack}`);
+      logger.error(`Error details: ${finalError.message}`);
+      if (finalError.stack && process.env.NODE_ENV === 'development') {
+        logger.error(`Stack: ${finalError.stack}`);
       }
     }
     
@@ -181,14 +205,20 @@ const connectDB = async () => {
     logger.error('3. Your database user credentials are correct');
     logger.error('4. Your connection string format is correct');
     logger.warn('');
+    logger.warn('💡 Quick fix: Run "npm run check-ip" to get your IP and whitelist instructions');
+    logger.warn('');
     logger.warn('⚠️  Server will start without database connection.');
     logger.warn('   Database-dependent endpoints will not work until MongoDB is connected.');
     logger.warn('   Fix your credentials and restart the server to enable database features.');
     
     isConnected = false;
+    // Set up connection event handlers even on failure for future reconnection attempts
+    setupConnectionHandlers();
     return false;
   }
+};
 
+const setupConnectionHandlers = () => {
   mongoose.connection.on('disconnected', () => {
     logger.warn('MongoDB connection lost. Attempting to reconnect...');
   });

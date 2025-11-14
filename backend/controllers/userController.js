@@ -97,11 +97,16 @@ const registerUser = asyncHandler(async (req, res) => {
     throw createHttpError(409, 'User already exists');
   }
 
+  // Normalize preferredLanguage to lowercase to match enum
+  const normalizedLanguage = preferredLanguage 
+    ? preferredLanguage.toLowerCase() 
+    : undefined;
+
   const user = await User.create({
     name,
     email,
     password,
-    preferredLanguage,
+    preferredLanguage: normalizedLanguage,
     themeMode,
     role: assignRole(email)
   });
@@ -183,7 +188,7 @@ const updateProfile = asyncHandler(async (req, res) => {
   }
   if (demographics) user.demographics = { ...user.demographics, ...demographics };
   if (lifestyle) user.lifestyle = { ...user.lifestyle, ...lifestyle };
-  if (preferredLanguage) user.preferredLanguage = preferredLanguage;
+  if (preferredLanguage) user.preferredLanguage = preferredLanguage.toLowerCase();
   if (themeMode) user.themeMode = themeMode;
 
   const updatedUser = await user.save();
@@ -314,7 +319,10 @@ const requestPasswordReset = asyncHandler(async (req, res) => {
   // await sendEmail(user.email, 'Password Reset', `Click here to reset: ${resetUrl}`);
   
   // For development/testing, we log or return a generic message:
-  console.log(`Password Reset Token for ${user.email}: ${resetToken}`);
+  if (process.env.NODE_ENV === 'development') {
+    // eslint-disable-next-line no-console
+    console.log(`Password Reset Token for ${user.email}: ${resetToken}`);
+  }
 
   res.json({
     success: true,

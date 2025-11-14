@@ -17,7 +17,10 @@
     "test-connection": "node scripts/test-connection.js",
     "diagnose": "node scripts/diagnose-auth.js",
     "check-env": "node scripts/check-env.js",
-    "fix-connection": "node scripts/auto-fix-connection.js"
+    "fix-connection": "node scripts/auto-fix-connection.js",
+    "check-ip": "node scripts/check-mongodb-ip.js",
+    "test-apis": "node scripts/test-apis.js",
+    "test-apis-curl": "powershell -ExecutionPolicy Bypass -File scripts/test-apis-curl.ps1"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

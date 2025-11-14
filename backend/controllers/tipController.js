@@ -1,8 +1,7 @@
 import { body, validationResult } from 'express-validator';
 import asyncHandler from '../utils/asyncHandler.js';
 import createHttpError from '../utils/createHttpError.js';
-import Tip from '../models/Tip.js'; // Assuming the model is here
-import { pickLocalizedMessage } from '../services/localizationService.js'; // Assuming this service exists
+import Tip from '../models/Tip.js';
 
 // --- Validation Rules for CREATE/UPDATE ---
 const tipValidationRules = [
@@ -22,18 +21,48 @@ const getTipById = asyncHandler(async (req, res, next) => {
   next();
 });
 
+// Helper to get localized message from Tip model structure
+const getLocalizedMessage = (tip, language) => {
+  if (!tip || !tip.localizedMessages || tip.localizedMessages.length === 0) {
+    return tip?.defaultMessage || '';
+  }
+
+  const normalizedLang = language?.toUpperCase() || 'EN';
+  
+  // Find message for requested language
+  const localizedMsg = tip.localizedMessages.find(
+    msg => msg.language?.toUpperCase() === normalizedLang
+  );
+  
+  if (localizedMsg) {
+    return localizedMsg.message;
+  }
+  
+  // Fallback to EN if available
+  const enMsg = tip.localizedMessages.find(
+    msg => msg.language?.toUpperCase() === 'EN'
+  );
+  
+  if (enMsg) {
+    return enMsg.message;
+  }
+  
+  // Fallback to first available message
+  return tip.localizedMessages[0]?.message || tip.defaultMessage || '';
+};
+
 // Helper to format the response (including localization)
 const formatTipResponse = (tip, language) => ({
   id: tip.id,
   key: tip.key,
-  message: pickLocalizedMessage(tip, language), // Localized message
+  message: getLocalizedMessage(tip, language), // Localized message
   triggerEvent: tip.triggerEvent,
   seasonTag: tip.seasonTag,
   isActive: tip.isActive,
   uiHints: tip.uiHints,
   createdAt: tip.createdAt,
   // Note: Only expose localization details to admin/management views, not general user views
-  allMessages: tip.localizedMessages, 
+  allMessages: tip.localizedMessages || [], 
 });
 
 // @desc    Create a new Tip

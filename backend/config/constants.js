@@ -39,7 +39,7 @@ const ALLOWED_FILE_TYPES = (process.env.ALLOWED_FILE_TYPES || 'image/jpeg,image/
 const REMINDER_CUTOFF_HOURS = Number(process.env.REMINDER_CUTOFF_HOURS) || 24;
 
 // Language and Theme settings
-const DEFAULT_LANGUAGE = process.env.DEFAULT_LANGUAGE || 'EN';
+const DEFAULT_LANGUAGE = (process.env.DEFAULT_LANGUAGE || 'EN').toLowerCase();
 const SUPPORTED_LANGUAGES = (process.env.SUPPORTED_LANGUAGES || 'EN,SI,TA')
   .split(',')
   .map(lang => lang.trim().toLowerCase());

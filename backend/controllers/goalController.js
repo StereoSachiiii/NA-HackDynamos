@@ -82,9 +82,9 @@ const formatGoalResponse = goal => ({
   updatedAt: goal.updatedAt
 });
 
-// @desc    Create a new nutrition goal
-// @route   POST /api/v1/goals
-// @access  Private
+// @desc Create a new nutrition goal
+// @route POST /api/v1/goals
+// @access Private
 const createGoal = asyncHandler(async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -138,9 +138,9 @@ const createGoal = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    List all nutrition goals for the user
-// @route   GET /api/v1/goals
-// @access  Private
+// @desc List all nutrition goals for the user
+// @route GET /api/v1/goals
+// @access Private
 const listGoals = asyncHandler(async (req, res) => {
   const goals = await NutritionGoal.find({ user: req.user.id }).sort({ createdAt: -1 });
 
@@ -151,9 +151,9 @@ const listGoals = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Get the active nutrition goal
-// @route   GET /api/v1/goals/active
-// @access  Private
+// @desc Get the active nutrition goal
+// @route GET /api/v1/goals/active
+// @access Private
 const getActiveGoal = asyncHandler(async (req, res) => {
   const activeGoal = await NutritionGoal.findOne({ user: req.user.id, isActive: true });
 
@@ -168,9 +168,9 @@ const getActiveGoal = asyncHandler(async (req, res) => {
 });
 
 
-// @desc    Get a single nutrition goal entry
-// @route   GET /api/v1/goals/:id
-// @access  Private
+// @desc Get a single nutrition goal entry
+// @route GET /api/v1/goals/:id
+// @access Private
 const getGoal = asyncHandler(async (req, res) => {
   // Goal is retrieved and attached to req by getGoalById middleware
   res.json({
@@ -179,9 +179,9 @@ const getGoal = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Update a single nutrition goal entry
-// @route   PUT /api/v1/goals/:id
-// @access  Private
+// @desc Update a single nutrition goal entry
+// @route PUT /api/v1/goals/:id
+// @access Private
 const updateGoal = asyncHandler(async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -234,9 +234,9 @@ const updateGoal = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Delete a single nutrition goal entry
-// @route   DELETE /api/v1/goals/:id
-// @access  Private
+// @desc Delete a single nutrition goal entry
+// @route DELETE /api/v1/goals/:id
+// @access Private
 const deleteGoal = asyncHandler(async (req, res) => {
   const goal = req.goal; // Retrieved by getGoalById
 

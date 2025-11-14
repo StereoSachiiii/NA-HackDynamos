@@ -32,6 +32,7 @@ const authorizeCustomPlanOwner = asyncHandler(async (req, res, next) => {
       return next();
   }
   
+  // If we reach here, user is not authorized
   throw createHttpError(403, 'Not authorized to modify this meal plan');
 });
 
