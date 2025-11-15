@@ -57,6 +57,10 @@
     "viewAllLogs": "View All Logs",
     "manageGoals": "Manage Goals",
     "uploadMealPhoto": "Upload Meal Photo",
+    "uploadMealPhotoDesc": "Upload a photo of your meal to automatically detect and log food items.",
+    "clickToUpload": "Click to upload meal photo",
+    "supportedFormats": "PNG, JPG, JPEG up to 5MB",
+    "uploading": "Uploading...",
     "noInsights": "No insights available yet. Keep logging meals to get personalized insights!",
     "noReminders": "No reminders at this time."
   },
@@ -174,7 +178,9 @@
     "networkError": "Network error. Please check your connection and try again.",
     "invalidCredentials": "Invalid email or password. Please try again.",
     "loginFailed": "Login failed. Please try again.",
-    "rateLimitError": "Too many login attempts. Please wait a few minutes before trying again."
+    "rateLimitError": "Too many login attempts. Please wait a few minutes before trying again.",
+    "databaseError": "Database connection required. Please ensure MongoDB is connected and your IP address is whitelisted in MongoDB Atlas.",
+    "databaseErrorInstructions": "To fix: 1) Run 'npm run check-ip' in backend folder, 2) Add your IP to MongoDB Atlas Network Access, 3) Wait 1-2 minutes, 4) Restart backend server."
   },
   "register": {
     "title": "Create Account",

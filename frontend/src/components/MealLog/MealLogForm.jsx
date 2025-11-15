@@ -1,8 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { mealLogService } from '../../services/mealLogService';
 import { foodService } from '../../services/foodService';
-import { uploadImage } from '../../services/imageUpload';
-import FoodSearch from '../Food/FoodSearch';
 
 const MealLogForm = ({ mealLog, onSave, onCancel }) => {
   const [formData, setFormData] = useState({
@@ -15,12 +13,13 @@ const MealLogForm = ({ mealLog, onSave, onCancel }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [selectedFood, setSelectedFood] = useState(null);
-  const [quantity, setQuantity] = useState('100');
+  const [quantity, setQuantity] = useState('1');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
-  const [photoUrl, setPhotoUrl] = useState('');
   const [foodDetailsMap, setFoodDetailsMap] = useState({}); // Map to store food details
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const searchTimeoutRef = useRef(null);
 
   useEffect(() => {
     if (mealLog) {
@@ -58,51 +57,120 @@ const MealLogForm = ({ mealLog, onSave, onCancel }) => {
     }
   }, [mealLog]);
 
-  const handleSearch = async (term) => {
-    setSearchTerm(term);
+  const performSearch = async (term) => {
+    if (term.length === 0) {
+      // Load initial foods when input is empty
+      try {
+        setSearchLoading(true);
+        const response = await foodService.searchFoods('', 30);
+        setSearchResults(response.data || []);
+      } catch (err) {
+        console.error('Food search error:', err);
+        setSearchResults([]);
+        setError('Failed to load foods. Please try again.');
+      } finally {
+        setSearchLoading(false);
+      }
+      return;
+    }
+
     if (term.length < 2) {
       setSearchResults([]);
       return;
     }
 
     try {
-      const response = await foodService.searchFoods(term, 10);
+      setSearchLoading(true);
+      const response = await foodService.searchFoods(term, 20);
       setSearchResults(response.data || []);
+      setError('');
     } catch (err) {
       console.error('Food search error:', err);
+      setSearchResults([]);
+      setError('Failed to search foods. Please try again.');
+    } finally {
+      setSearchLoading(false);
     }
   };
 
+  const handleSearch = (term) => {
+    setSearchTerm(term);
+    setShowDropdown(true);
+    
+    // Clear existing timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    // Debounce search - wait 300ms after user stops typing
+    searchTimeoutRef.current = setTimeout(() => {
+      performSearch(term);
+    }, 300);
+  };
+
+  useEffect(() => {
+    // Cleanup timeout on unmount
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const handleAddFood = () => {
     if (!selectedFood) {
-      setError('Please select a food item');
+      setError('Please select a food item from the dropdown');
       return;
     }
 
-    const qty = parseFloat(quantity) || 100;
+    const qty = parseFloat(quantity) || 1;
+    if (isNaN(qty) || qty <= 0) {
+      setError('Please enter a valid quantity (must be greater than 0)');
+      return;
+    }
+
     const newEntry = {
       foodItem: selectedFood._id,
       quantity: qty,
       unit: 'g'
     };
 
-    setFormData({
-      ...formData,
-      foodEntries: [...formData.foodEntries, newEntry]
-    });
+    // Store food details for display
+    setFoodDetailsMap(prevMap => ({
+      ...prevMap,
+      [selectedFood._id]: selectedFood
+    }));
+
+    // Use functional update to ensure we have the latest state
+    setFormData(prevFormData => ({
+      ...prevFormData,
+      foodEntries: [...prevFormData.foodEntries, newEntry]
+    }));
 
     setSelectedFood(null);
-    setQuantity('100');
+    setQuantity('1');
     setSearchTerm('');
     setSearchResults([]);
+    setShowDropdown(false);
+    setError('');
+  };
+
+  const handleFoodSelect = (food, e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    setSelectedFood(food);
+    setSearchTerm(food.name);
+    setShowDropdown(false);
     setError('');
   };
 
   const handleRemoveFood = (index) => {
-    setFormData({
-      ...formData,
-      foodEntries: formData.foodEntries.filter((_, i) => i !== index)
-    });
+    setFormData(prevFormData => ({
+      ...prevFormData,
+      foodEntries: prevFormData.foodEntries.filter((_, i) => i !== index)
+    }));
   };
 
   const handleSubmit = async (e) => {
@@ -133,15 +201,21 @@ const MealLogForm = ({ mealLog, onSave, onCancel }) => {
 
       onSave();
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to save meal log');
-      console.error(err);
+      // Handle validation errors
+      if (err.response?.data?.errors && Array.isArray(err.response.data.errors)) {
+        const errorMessages = err.response.data.errors.map(e => e.msg || e.message).join(', ');
+        setError(errorMessages || 'Validation failed');
+      } else {
+        setError(err.response?.data?.message || err.message || 'Failed to save meal log');
+      }
+      console.error('Meal log error:', err);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6" style={{ color: '#000000' }}>
       {error && (
         <div className="p-4 bg-red-50 text-red-700 rounded-lg">
           {error}
@@ -150,13 +224,14 @@ const MealLogForm = ({ mealLog, onSave, onCancel }) => {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-black mb-1">
             Meal Type *
           </label>
           <select
             value={formData.mealType}
-            onChange={(e) => setFormData({ ...formData, mealType: e.target.value })}
-            className="input-field"
+            onChange={(e) => setFormData(prev => ({ ...prev, mealType: e.target.value }))}
+            className="input-field text-black"
+            style={{ color: '#000000' }}
             required
           >
             <option value="Breakfast">Breakfast</option>
@@ -168,121 +243,146 @@ const MealLogForm = ({ mealLog, onSave, onCancel }) => {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-black mb-1">
             Date *
           </label>
           <input
             type="date"
             value={formData.date}
-            onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-            className="input-field"
+            onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
+            className="input-field text-black"
+            style={{ color: '#000000' }}
             required
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-black mb-1">
             Time *
           </label>
           <input
             type="time"
             value={formData.time}
-            onChange={(e) => setFormData({ ...formData, time: e.target.value })}
-            className="input-field"
+            onChange={(e) => setFormData(prev => ({ ...prev, time: e.target.value }))}
+            className="input-field text-black"
+            style={{ color: '#000000' }}
             required
           />
         </div>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Meal Photo (Optional)
-        </label>
-        <input
-          type="file"
-          accept="image/*"
-          onChange={async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            setUploadingPhoto(true);
-            try {
-              const result = await uploadImage(file);
-              if (result.success && result.data?.photoUrl) {
-                setPhotoUrl(result.data.photoUrl);
-                alert('Photo uploaded successfully!');
-              }
-            } catch (err) {
-              alert('Failed to upload photo');
-              console.error(err);
-            } finally {
-              setUploadingPhoto(false);
-            }
-          }}
-          disabled={uploadingPhoto}
-          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
-        />
-        {uploadingPhoto && <p className="text-sm text-gray-600 mt-2">Uploading...</p>}
-        {photoUrl && (
-          <p className="text-sm text-green-600 mt-2">✓ Photo uploaded</p>
-        )}
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-black mb-2">
           Add Food Items *
         </label>
         <div className="space-y-3">
-          <div className="flex gap-2">
-            <input
-              type="text"
-              placeholder="Search foods..."
-              value={searchTerm}
-              onChange={(e) => handleSearch(e.target.value)}
-              className="input-field flex-1"
-            />
+          <div className="flex gap-2 relative">
+            <div className="flex-1 relative">
+              <input
+                type="text"
+                placeholder="Search and select food..."
+                value={searchTerm}
+                onChange={(e) => handleSearch(e.target.value)}
+                onFocus={() => {
+                  setShowDropdown(true);
+                  if (searchResults.length === 0) {
+                    performSearch(searchTerm);
+                  }
+                }}
+                onBlur={(e) => {
+                  // Don't close if clicking inside dropdown
+                  const relatedTarget = e.relatedTarget || document.activeElement;
+                  if (!relatedTarget || !e.currentTarget.parentElement?.contains(relatedTarget)) {
+                    setTimeout(() => setShowDropdown(false), 200);
+                  }
+                }}
+                className="input-field w-full text-black pr-10"
+                style={{ color: '#000000' }}
+              />
+              {searchLoading && (
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-emerald-600"></div>
+                </div>
+              )}
+              
+              {/* Dropdown List */}
+              {showDropdown && searchResults.length > 0 && (
+                <div 
+                  className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto"
+                  onMouseDown={(e) => {
+                    // Prevent input blur when clicking inside dropdown
+                    if (e.target === e.currentTarget || e.target.closest('.dropdown-item')) {
+                      e.preventDefault();
+                    }
+                  }}
+                >
+                  {searchResults.map((food) => (
+                    <div
+                      key={food._id}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleFoodSelect(food, e);
+                      }}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleFoodSelect(food, e);
+                      }}
+                      className={`dropdown-item p-3 cursor-pointer hover:bg-emerald-50 border-b border-gray-100 last:border-b-0 transition-colors ${
+                        selectedFood?._id === food._id ? 'bg-emerald-100' : ''
+                      }`}
+                    >
+                      <div className="font-medium text-gray-900">{food.name}</div>
+                      <div className="text-sm text-gray-600 mt-1">
+                        {food.calories || 0} kcal | P: {food.protein || 0}g | C: {food.carbs || 0}g | F: {food.fat || 0}g
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              {showDropdown && !searchLoading && searchResults.length === 0 && searchTerm.length >= 2 && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg p-3 text-center text-gray-500">
+                  No foods found. Try a different search term.
+                </div>
+              )}
+            </div>
+            
             <input
               type="number"
               placeholder="Quantity (g)"
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
-              className="input-field w-32"
+              className="input-field text-black w-32"
+              style={{ color: '#000000' }}
               min="1"
+              step="0.1"
             />
             <button
               type="button"
               onClick={handleAddFood}
-              className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-6 py-2 rounded-lg font-semibold hover:from-emerald-600 hover:to-teal-700 transition-all duration-300 shadow-md hover:shadow-lg"
+              disabled={!selectedFood}
+              className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-6 py-2 rounded-lg font-semibold hover:from-emerald-600 hover:to-teal-700 transition-all duration-300 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Add
             </button>
           </div>
-
-          {searchResults.length > 0 && (
-            <div className="border rounded-lg p-2 max-h-48 overflow-y-auto">
-              {searchResults.map((food) => (
-                <div
-                  key={food._id}
-                  onClick={() => {
-                    setSelectedFood(food);
-                    setSearchTerm(food.name);
-                    setSearchResults([]);
-                  }}
-                  className={`p-2 cursor-pointer hover:bg-emerald-50 rounded ${
-                    selectedFood?._id === food._id ? 'bg-emerald-100' : ''
-                  }`}
-                >
-                  <div className="font-medium">{food.name}</div>
-                  <div className="text-sm text-gray-600">
-                    {food.calories} kcal | P: {food.protein}g | C: {food.carbs}g | F: {food.fat}g
-                  </div>
-                </div>
-              ))}
+          
+          {selectedFood && (
+            <div className="p-2 bg-emerald-50 border border-emerald-200 rounded-lg">
+              <div className="text-sm font-medium text-emerald-800">
+                Selected: {selectedFood.name}
+              </div>
+              <div className="text-xs text-emerald-600 mt-1">
+                {selectedFood.calories || 0} kcal per 100g
+              </div>
             </div>
           )}
 
           {formData.foodEntries.length > 0 && (
-            <div className="border rounded-lg p-3 bg-gray-50 dark:bg-gray-800">
-              <h4 className="text-sm font-semibold mb-3 text-gray-700 dark:text-gray-300">Selected Foods ({formData.foodEntries.length}):</h4>
+            <div className="border-2 border-emerald-500 rounded-lg p-3 bg-white" style={{ backgroundColor: '#ffffff' }}>
+              <h4 className="text-sm font-semibold mb-3 text-black" style={{ color: '#000000' }}>Selected Foods ({formData.foodEntries.length}):</h4>
               <ul className="space-y-3">
                 {formData.foodEntries.map((entry, idx) => {
                   const foodId = entry.foodItem?._id || entry.foodItem;
@@ -299,12 +399,12 @@ const MealLogForm = ({ mealLog, onSave, onCancel }) => {
                   const fat = food?.fat ? (food.fat * multiplier).toFixed(1) : 0;
                   
                   return (
-                    <li key={idx} className="flex justify-between items-start p-2 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
+                    <li key={idx} className="flex justify-between items-start p-2 bg-white rounded-lg border border-emerald-300" style={{ backgroundColor: '#ffffff' }}>
                       <div className="flex-1">
-                        <div className="font-medium text-gray-900 dark:text-white">
+                        <div className="font-medium text-black" style={{ color: '#000000' }}>
                           {food?.name || 'Unknown Food'}
                         </div>
-                        <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                        <div className="text-xs text-black mt-1" style={{ color: '#000000' }}>
                           {entry.quantity}{entry.unit || 'g'} • {calories} kcal • P:{protein}g C:{carbs}g F:{fat}g
                         </div>
                       </div>
@@ -321,8 +421,8 @@ const MealLogForm = ({ mealLog, onSave, onCancel }) => {
               </ul>
               {/* Total Summary */}
               {formData.foodEntries.length > 0 && (
-                <div className="mt-3 pt-3 border-t border-gray-300 dark:border-gray-600">
-                  <div className="flex justify-between text-sm font-semibold text-gray-700 dark:text-gray-300">
+                <div className="mt-3 pt-3 border-t border-emerald-300">
+                  <div className="flex justify-between text-sm font-semibold text-black" style={{ color: '#000000' }}>
                     <span>Total:</span>
                     <span>
                       {formData.foodEntries.reduce((sum, entry) => {
@@ -342,13 +442,14 @@ const MealLogForm = ({ mealLog, onSave, onCancel }) => {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-black mb-1">
           Notes (Optional)
         </label>
         <textarea
           value={formData.notes}
-          onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-          className="input-field"
+          onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+          className="input-field text-black"
+          style={{ color: '#000000' }}
           rows="3"
           placeholder="Add any notes about this meal..."
         />

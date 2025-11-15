@@ -30,48 +30,42 @@ const Navbar = () => {
             </Link>
             
             {/* Navigation Links */}
-            <div className="hidden md:flex space-x-1">
+            <div className="hidden md:flex items-center space-x-2 flex-nowrap">
               <Link 
                 to="/" 
-                className="px-4 py-2 rounded-lg text-gray-700 hover:text-primary-600 hover:bg-primary-200 font-medium transition-all duration-200"
+                className="px-4 py-2 rounded-lg text-gray-700 hover:text-primary-600 hover:bg-primary-200 font-medium transition-all duration-200 whitespace-nowrap"
               >
                 {t('navbar.home')}
               </Link>
               <Link 
                 to="/tips" 
-                className="px-4 py-2 rounded-lg text-gray-700 hover:text-primary-600 hover:bg-primary-200 font-medium transition-all duration-200"
+                className="px-4 py-2 rounded-lg text-gray-700 hover:text-primary-600 hover:bg-primary-200 font-medium transition-all duration-200 whitespace-nowrap"
               >
                 {t('navbar.tips')}
               </Link>
               <Link 
                 to="/about" 
-                className="px-4 py-2 rounded-lg text-gray-700 hover:text-primary-600 hover:bg-primary-200 font-medium transition-all duration-200"
+                className="px-4 py-2 rounded-lg text-gray-700 hover:text-primary-600 hover:bg-primary-200 font-medium transition-all duration-200 whitespace-nowrap"
               >
                 {t('navbar.about')}
               </Link>
               {user && (
                 <>
                   <Link
-                    to="/dashboard"
-                    className="px-4 py-2 rounded-lg text-gray-700 hover:text-primary-600 hover:bg-primary-200 font-medium transition-all duration-200"
-                  >
-                    {t('navbar.dashboard')}
-                  </Link>
-                  <Link
                     to="/meal-logs"
-                    className="px-4 py-2 rounded-lg text-gray-700 hover:text-primary-600 hover:bg-primary-200 font-medium transition-all duration-200"
+                    className="px-4 py-2 rounded-lg text-gray-700 hover:text-primary-600 hover:bg-primary-200 font-medium transition-all duration-200 whitespace-nowrap"
                   >
                     {t('navbar.mealLogs')}
                   </Link>
                   <Link
                     to="/goals"
-                    className="px-4 py-2 rounded-lg text-gray-700 hover:text-primary-600 hover:bg-primary-200 font-medium transition-all duration-200"
+                    className="px-4 py-2 rounded-lg text-gray-700 hover:text-primary-600 hover:bg-primary-200 font-medium transition-all duration-200 whitespace-nowrap"
                   >
                     {t('navbar.goals')}
                   </Link>
                   <Link
                     to="/meal-plans"
-                    className="px-4 py-2 rounded-lg text-gray-700 hover:text-primary-600 hover:bg-primary-200 font-medium transition-all duration-200"
+                    className="px-4 py-2 rounded-lg text-gray-700 hover:text-primary-600 hover:bg-primary-200 font-medium transition-all duration-200 whitespace-nowrap"
                   >
                     {t('navbar.mealPlans')}
                   </Link>

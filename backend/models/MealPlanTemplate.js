@@ -84,6 +84,10 @@ const mealPlanTemplateSchema = new mongoose.Schema(
 mealPlanTemplateSchema.pre('save', function (next) {
   // Check if it's a new document and has a creator assigned
   if (this.isNew && this.createdBy) {
+    // Initialize metadata if it doesn't exist
+    if (!this.metadata) {
+      this.metadata = {};
+    }
     // Enforce sourceType and isPublished status for custom plans
     if (this.metadata.sourceType !== 'community') {
       this.metadata.sourceType = 'community';

@@ -8,7 +8,7 @@ const customPlanValidationRules = [
   // General validation for POST and PUT
   body('name').notEmpty().withMessage('Name is required'),
   body('goalType').notEmpty().withMessage('GoalType is required'),
-  body('days').isArray({ min: 1 }).withMessage('At least one day entry is required'),
+  body('days').isArray({ min: 0 }).withMessage('Days must be an array'),
   // Optional field validation
   body('calorieTarget').optional().isNumeric().withMessage('Calorie target must be a number'),
   body('macroSplit.protein').optional().isFloat({ min: 0, max: 100 }).withMessage('Protein must be a percentage (0-100)'),
@@ -27,7 +27,10 @@ const authorizeCustomPlanOwner = asyncHandler(async (req, res, next) => {
   // Authorization Check:
   // 1. Only community plans can be modified by users.
   // 2. The logged-in user (req.user.id) must be the plan's creator.
-  if (plan.metadata.sourceType === 'community' && plan.createdBy.toString() === req.user.id.toString()) {
+  const isCommunityPlan = plan.metadata && plan.metadata.sourceType === 'community';
+  const isOwner = plan.createdBy && plan.createdBy.toString() === req.user.id.toString();
+  
+  if (isCommunityPlan && isOwner) {
       req.plan = plan; // Attach plan to request for use in controller
       return next();
   }
@@ -41,12 +44,27 @@ const authorizeCustomPlanOwner = asyncHandler(async (req, res, next) => {
 const listMealPlans = asyncHandler(async (req, res) => {
   const { goalType, seasonTag } = req.query;
 
-  const query = { isPublished: true };
-  if (goalType) query.goalType = goalType;
-  if (seasonTag) query['metadata.seasonTag'] = seasonTag;
+  // Build query: include published plans OR user's custom plans (if user is authenticated)
+  const queryConditions = [{ isPublished: true }];
+  
+  // If user is authenticated, also include their custom plans
+  if (req.user && req.user.id) {
+    queryConditions.push({ createdBy: req.user.id });
+  }
+  
+  const query = queryConditions.length > 1 ? { $or: queryConditions } : queryConditions[0];
+  
+  // Add filters - MongoDB will apply these to the entire query
+  if (goalType) {
+    query.goalType = goalType;
+  }
+  
+  if (seasonTag) {
+    query['metadata.seasonTag'] = seasonTag;
+  }
 
   // Efficiency: Use .select('-days.foodItems') to retrieve all plans quickly without deep food data
-  const plans = await MealPlanTemplate.find(query).select('-days.foodItems');
+  const plans = await MealPlanTemplate.find(query).select('-days.foodItems').sort({ createdAt: -1 });
 
   res.json({
     success: true,

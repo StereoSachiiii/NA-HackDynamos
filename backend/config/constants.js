@@ -77,14 +77,16 @@ const RATE_LIMIT_OPTIONS = {
 // More lenient rate limit for auth routes (login/register)
 // In development, allow many attempts; in production, be more strict
 const AUTH_RATE_LIMIT_OPTIONS = {
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: NODE_ENV === 'production' ? 20 : 500, // 20 attempts per 15 min in prod, 500 in dev
+  windowMs: NODE_ENV === 'production' ? 15 * 60 * 1000 : 30 * 1000, // 15 min in prod, 30 seconds in dev (resets very fast)
+  max: NODE_ENV === 'production' ? 20 : 1000, // 20 attempts per 15 min in prod, 1000 per 30 sec in dev (very high for testing)
   standardHeaders: true,
   legacyHeaders: false,
   message: 'Too many login attempts, please try again later.',
   skipSuccessfulRequests: true, // Don't count successful logins
   // In development, use a separate store that resets on server restart
-  store: NODE_ENV === 'development' ? undefined : undefined // Use default in-memory store
+  store: NODE_ENV === 'development' ? undefined : undefined, // Use default in-memory store
+  // Skip rate limiting entirely in development if env var is set
+  skip: NODE_ENV === 'development' && process.env.DISABLE_RATE_LIMIT === 'true' ? () => true : undefined
 };
 
 // CORS

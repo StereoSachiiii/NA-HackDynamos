@@ -40,31 +40,48 @@ const MealPlanDetailModal = ({ planId, onClose, onApply }) => {
   }, [planId]);
 
   const handleApplyToMealLog = async (dayEntry) => {
-    if (!dayEntry || !dayEntry.foodItems || dayEntry.foodItems.length === 0) {
-      alert('No food items in this meal');
+    if (!dayEntry) {
+      alert('Invalid meal entry');
       return;
     }
 
     try {
       const today = new Date();
-      const foodEntries = dayEntry.foodItems.map(item => ({
-        foodItem: item.foodItem?._id || item.foodItem,
-        quantity: 100, // Default quantity
-        unit: 'g'
-      }));
+      
+      // Process food items if they exist, otherwise use empty array
+      let foodEntries = [];
+      
+      if (dayEntry.foodItems && dayEntry.foodItems.length > 0) {
+        foodEntries = dayEntry.foodItems
+          .filter(item => item.foodItem) // Filter out items without foodItem reference
+          .map(item => {
+            const foodItemId = item.foodItem?._id || item.foodItem;
+            // Use servingSizeGrams if available, otherwise default to 100g
+            const quantity = item.foodItem?.servingSizeGrams || 100;
+            
+            return {
+              foodItem: foodItemId,
+              quantity: quantity,
+              notes: item.notes || undefined
+            };
+          });
+      }
 
       const mealLogData = {
         mealType: dayEntry.mealType,
         date: today.toISOString(),
         foodEntries: foodEntries,
-        notes: `Applied from meal plan: ${plan?.name}`
+        notes: `Applied from meal plan: ${plan?.name || 'Meal Plan'}`
       };
 
       await mealLogService.createMealLog(mealLogData);
-      alert('Meal applied to your meal log successfully!');
+      alert(foodEntries.length > 0 
+        ? 'Meal applied to your meal log successfully!'
+        : 'Meal log created successfully (no food items in this meal).');
       if (onApply) onApply();
     } catch (err) {
-      alert('Failed to apply meal to log');
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to apply meal to log';
+      alert(`Failed to apply meal to log: ${errorMessage}`);
       console.error(err);
     }
   };

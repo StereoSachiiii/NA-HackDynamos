@@ -54,12 +54,17 @@ app.use(
 );
 
 app.get('/health', (_req, res) => {
+  const dbStatus = getConnectionStatus();
   res.json({
     success: true,
     service: APP_NAME,
     environment: NODE_ENV,
-    database: getConnectionStatus() ? 'connected' : 'disconnected',
-    timestamp: new Date().toISOString()
+    database: dbStatus ? 'connected' : 'disconnected',
+    timestamp: new Date().toISOString(),
+    ...(NODE_ENV === 'development' && !dbStatus && {
+      message: 'MongoDB not connected. Run "npm run check-ip" in backend folder to get your IP address for whitelisting.',
+      help: 'https://cloud.mongodb.com/v2#/security/network/whitelist'
+    })
   });
 });
 

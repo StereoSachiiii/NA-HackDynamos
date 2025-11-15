@@ -12,8 +12,8 @@ import { protect } from '../middleware/authMiddleware.js'; // Assumes 'protect' 
 
 const router = Router();
 
-// GET /api/mealplans
-router.get('/', listMealPlans); 
+// GET /api/mealplans - Protected to include user's custom plans
+router.get('/', protect, listMealPlans); 
 // GET /api/mealplans/:id
 router.get('/:id', getMealPlan); 
 

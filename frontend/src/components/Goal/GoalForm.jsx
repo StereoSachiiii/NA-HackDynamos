@@ -169,7 +169,7 @@ const GoalForm = ({ goal, onSave, onCancel }) => {
       )}
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        <label className="block text-sm font-medium text-black mb-1">
           Goal Type *
         </label>
         {loadingProfiles ? (
@@ -178,12 +178,13 @@ const GoalForm = ({ goal, onSave, onCancel }) => {
           <select
             value={formData.goalType}
             onChange={(e) => handleGoalTypeChange(e.target.value)}
-            className="input-field dark:bg-gray-700 dark:text-white dark:border-gray-600"
+            className="input-field text-black"
+            style={{ backgroundColor: '#ffffff', color: '#000000' }}
             required
           >
-            <option value="">Select a goal type...</option>
+            <option value="" style={{ color: '#000000' }}>Select a goal type...</option>
             {goalProfiles.map((profile) => (
-              <option key={profile.name || profile} value={profile.name || profile}>
+              <option key={profile.name || profile} value={profile.name || profile} style={{ color: '#000000' }}>
                 {profile.name || profile}
                 {profile.calorieBand ? ` (${profile.calorieBand.min}-${profile.calorieBand.max} kcal)` : ''}
               </option>
@@ -198,14 +199,15 @@ const GoalForm = ({ goal, onSave, onCancel }) => {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        <label className="block text-sm font-medium text-black mb-1">
           Target Calories {selectedProfile?.calorieBand ? '(Recommended)' : '(Optional)'}
         </label>
         <input
           type="number"
           value={formData.targetCalories}
           onChange={(e) => setFormData({ ...formData, targetCalories: e.target.value })}
-          className="input-field dark:bg-gray-700 dark:text-white dark:border-gray-600"
+          className="input-field text-black"
+          style={{ backgroundColor: '#ffffff', color: '#000000' }}
           placeholder={selectedProfile?.calorieBand ? 
             `e.g., ${Math.round((selectedProfile.calorieBand.min + selectedProfile.calorieBand.max) / 2)}` : 
             "e.g., 2000"}
@@ -225,7 +227,7 @@ const GoalForm = ({ goal, onSave, onCancel }) => {
 
       <div>
         <div className="flex justify-between items-center mb-2">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+          <label className="block text-sm font-medium text-black">
             Target Macro Split {selectedProfile?.macroSplit ? '(From Profile)' : '(Optional)'}
           </label>
           <button
@@ -238,34 +240,37 @@ const GoalForm = ({ goal, onSave, onCancel }) => {
         </div>
         <div className="grid grid-cols-3 gap-4">
           <div>
-            <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Protein (%)</label>
+            <label className="block text-xs text-black mb-1">Protein (%)</label>
             <input
               type="number"
               value={formData.targetMacroSplit.protein}
               onChange={(e) => handleMacroChange('protein', e.target.value)}
-              className="input-field dark:bg-gray-700 dark:text-white dark:border-gray-600"
+              className="input-field text-black"
+              style={{ backgroundColor: '#ffffff', color: '#000000' }}
               min="0"
               max="100"
             />
           </div>
           <div>
-            <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Carbs (%)</label>
+            <label className="block text-xs text-black mb-1">Carbs (%)</label>
             <input
               type="number"
               value={formData.targetMacroSplit.carbs}
               onChange={(e) => handleMacroChange('carbs', e.target.value)}
-              className="input-field dark:bg-gray-700 dark:text-white dark:border-gray-600"
+              className="input-field text-black"
+              style={{ backgroundColor: '#ffffff', color: '#000000' }}
               min="0"
               max="100"
             />
           </div>
           <div>
-            <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Fat (%)</label>
+            <label className="block text-xs text-black mb-1">Fat (%)</label>
             <input
               type="number"
               value={formData.targetMacroSplit.fat}
               onChange={(e) => handleMacroChange('fat', e.target.value)}
-              className="input-field dark:bg-gray-700 dark:text-white dark:border-gray-600"
+              className="input-field text-black"
+              style={{ backgroundColor: '#ffffff', color: '#000000' }}
               min="0"
               max="100"
             />

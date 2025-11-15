@@ -40,7 +40,7 @@ const Register = () => {
         email: formData.email,
         password: formData.password,
       });
-      navigate('/dashboard');
+      navigate('/');
     } catch (err) {
       console.error('Registration error:', err);
       

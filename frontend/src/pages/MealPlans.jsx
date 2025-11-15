@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { mealPlanService } from '../services/mealPlanService';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
-import MealPlanDetailModal from '../components/MealPlan/MealPlanDetailModal';
 
 const MealPlans = () => {
   const { user } = useAuth();
@@ -11,8 +10,11 @@ const MealPlans = () => {
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingPlan, setEditingPlan] = useState(null);
-  const [selectedPlanId, setSelectedPlanId] = useState(null);
   const [filterGoalType, setFilterGoalType] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [planToDelete, setPlanToDelete] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -45,14 +47,21 @@ const MealPlans = () => {
 
   const handleCreatePlan = async (e) => {
     e.preventDefault();
+    setError('');
+    setSuccess('');
+    
     try {
       await mealPlanService.createCustomPlan(formData);
       setShowCreateForm(false);
       setFormData({ name: '', description: '', goalType: 'Weight Loss', days: [] });
       fetchMealPlans();
-      alert('Meal plan created successfully!');
+      setSuccess('Meal plan created successfully!');
+      setTimeout(() => setSuccess(''), 3000);
     } catch (error) {
-      alert(error.response?.data?.message || 'Failed to create meal plan');
+      const errorMessage = error.response?.data?.errors 
+        ? error.response.data.errors.map(e => e.msg || e.message).join(', ')
+        : error.response?.data?.message || 'Failed to create meal plan';
+      setError(errorMessage);
       console.error(error);
     }
   };
@@ -70,31 +79,56 @@ const MealPlans = () => {
 
   const handleUpdatePlan = async (e) => {
     e.preventDefault();
+    setError('');
+    setSuccess('');
+    
     try {
       await mealPlanService.updateMealPlan(editingPlan._id || editingPlan.id, formData);
       setShowCreateForm(false);
       setEditingPlan(null);
-      setFormData({ name: '', description: '', meals: [] });
+      setFormData({ name: '', description: '', goalType: 'Weight Loss', days: [] });
       fetchMealPlans();
-      alert('Meal plan updated successfully!');
+      setSuccess('Meal plan updated successfully!');
+      setTimeout(() => setSuccess(''), 3000);
     } catch (error) {
-      alert(error.response?.data?.message || 'Failed to update meal plan');
+      const errorMessage = error.response?.data?.errors 
+        ? error.response.data.errors.map(e => e.msg || e.message).join(', ')
+        : error.response?.data?.message || 'Failed to update meal plan';
+      setError(errorMessage);
       console.error(error);
     }
   };
 
-  const handleDeletePlan = async (planId) => {
-    if (!window.confirm('Are you sure you want to delete this meal plan?')) {
-      return;
-    }
+  const handleDeleteClick = (planId) => {
+    setPlanToDelete(planId);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!planToDelete) return;
+    
+    setError('');
+    setSuccess('');
+    
     try {
-      await mealPlanService.deleteMealPlan(planId);
+      await mealPlanService.deleteMealPlan(planToDelete);
       fetchMealPlans();
-      alert('Meal plan deleted successfully!');
+      setShowDeleteConfirm(false);
+      setPlanToDelete(null);
+      setSuccess('Meal plan deleted successfully!');
+      setTimeout(() => setSuccess(''), 3000);
     } catch (error) {
-      alert(error.response?.data?.message || 'Failed to delete meal plan');
+      const errorMessage = error.response?.data?.message || 'Failed to delete meal plan';
+      setError(errorMessage);
+      setShowDeleteConfirm(false);
+      setPlanToDelete(null);
       console.error(error);
     }
+  };
+
+  const handleDeleteCancel = () => {
+    setShowDeleteConfirm(false);
+    setPlanToDelete(null);
   };
 
   if (!user) {
@@ -231,6 +265,34 @@ const MealPlans = () => {
           </div>
         </div>
 
+        {/* Success/Error Messages */}
+        {success && (
+          <div className="mb-6 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg relative animate-fadeIn">
+            <span className="block sm:inline">{success}</span>
+            <button
+              onClick={() => setSuccess('')}
+              className="absolute top-0 bottom-0 right-0 px-4 py-3"
+            >
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </button>
+          </div>
+        )}
+        {error && (
+          <div className="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative animate-fadeIn">
+            <span className="block sm:inline">{error}</span>
+            <button
+              onClick={() => setError('')}
+              className="absolute top-0 bottom-0 right-0 px-4 py-3"
+            >
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </button>
+          </div>
+        )}
+
         {/* Form Section */}
         {showCreateForm && (
           <div className="mb-8 bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-6 border border-white/20 animate-fadeIn">
@@ -299,7 +361,9 @@ const MealPlans = () => {
                   onClick={() => {
                     setShowCreateForm(false);
                     setEditingPlan(null);
-                    setFormData({ name: '', description: '', meals: [] });
+                    setFormData({ name: '', description: '', goalType: 'Weight Loss', days: [] });
+                    setError('');
+                    setSuccess('');
                   }}
                   className="bg-white text-emerald-600 border-2 border-emerald-600 px-6 py-3 rounded-xl font-semibold hover:bg-emerald-50 transition-all duration-300 shadow-md hover:shadow-lg flex-1"
                 >
@@ -357,45 +421,53 @@ const MealPlans = () => {
                     </span>
                   )}
                 </div>
-                <div className="mt-4 flex gap-2 flex-wrap">
-                  {plan.isCustom && (
-                    <>
-                      <button
-                        onClick={() => handleEditPlan(plan)}
-                        className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-semibold hover:from-emerald-600 hover:to-teal-700 transition-all duration-300 shadow-md hover:shadow-lg text-sm"
-                      >
-                        {t('common.edit')}
-                      </button>
-                      <button
-                        onClick={() => handleDeletePlan(plan._id || plan.id)}
-                        className="bg-gradient-to-r from-emerald-600 to-teal-700 text-white px-4 py-2 rounded-lg font-semibold hover:from-emerald-700 hover:to-teal-800 transition-all duration-300 shadow-md hover:shadow-lg text-sm"
-                      >
-                        {t('common.delete')}
-                      </button>
-                    </>
-                  )}
-                  <button 
-                    onClick={() => setSelectedPlanId(plan._id || plan.id)}
-                    className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-semibold hover:from-emerald-600 hover:to-teal-700 transition-all duration-300 shadow-md hover:shadow-lg text-sm"
-                  >
-                    {t('mealPlans.viewDetails')}
-                  </button>
-                </div>
+                {plan.isCustom && (
+                  <div className="mt-4 flex gap-2 flex-wrap">
+                    <button
+                      onClick={() => handleEditPlan(plan)}
+                      className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-semibold hover:from-emerald-600 hover:to-teal-700 transition-all duration-300 shadow-md hover:shadow-lg text-sm"
+                    >
+                      {t('common.edit')}
+                    </button>
+                    <button
+                      onClick={() => handleDeleteClick(plan._id || plan.id)}
+                      className="bg-gradient-to-r from-emerald-600 to-teal-700 text-white px-4 py-2 rounded-lg font-semibold hover:from-emerald-700 hover:to-teal-800 transition-all duration-300 shadow-md hover:shadow-lg text-sm"
+                    >
+                      {t('common.delete')}
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
         )}
 
-        {/* Meal Plan Detail Modal */}
-        {selectedPlanId && (
-          <MealPlanDetailModal
-            planId={selectedPlanId}
-            onClose={() => setSelectedPlanId(null)}
-            onApply={() => {
-              setSelectedPlanId(null);
-              // Optionally refresh meal logs if needed
-            }}
-          />
+        {/* Delete Confirmation Modal */}
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full p-6">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+                Confirm Delete
+              </h3>
+              <p className="text-gray-600 dark:text-gray-300 mb-6">
+                Are you sure you want to delete this meal plan? This action cannot be undone.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={handleDeleteConfirm}
+                  className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg font-semibold transition-all duration-300 flex-1"
+                >
+                  Delete
+                </button>
+                <button
+                  onClick={handleDeleteCancel}
+                  className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-6 py-2 rounded-lg font-semibold transition-all duration-300 flex-1"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>

@@ -19,7 +19,7 @@ const Login = () => {
 
     try {
       await login(email, password);
-      navigate('/dashboard');
+      navigate('/');
     } catch (err) {
       console.error('Login error:', err);
       
@@ -29,6 +29,14 @@ const Login = () => {
       } else if (err.response?.status === 429) {
         // Rate limit error - show user-friendly message
         setError(t('login.rateLimitError'));
+      } else if (err.response?.status === 503) {
+        // Database connection error
+        const dbError = err.response?.data?.message || '';
+        if (dbError.includes('Database') || dbError.includes('MongoDB')) {
+          setError(t('login.databaseError'));
+        } else {
+          setError(dbError || t('login.databaseError'));
+        }
       } else if (err.response?.status === 401) {
         setError(t('login.invalidCredentials'));
       } else {

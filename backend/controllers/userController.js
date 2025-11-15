@@ -90,6 +90,13 @@ const registerUser = asyncHandler(async (req, res) => {
     return res.status(422).json({ success: false, errors: errors.array() });
   }
 
+  // Check MongoDB connection before attempting registration
+  const mongoose = (await import('mongoose')).default;
+  if (mongoose.connection.readyState !== 1) {
+    const errorMsg = 'Database connection required. Please check MongoDB connection and ensure your IP address is whitelisted in MongoDB Atlas. Run "npm run check-ip" in backend folder to get your current IP address.';
+    throw createHttpError(503, errorMsg);
+  }
+
   const { name, email, password, preferredLanguage, themeMode } = req.body;
 
   const existingUser = await User.findOne({ email });
@@ -134,7 +141,9 @@ const authUser = asyncHandler(async (req, res) => {
   // Check MongoDB connection before attempting login
   const mongoose = (await import('mongoose')).default;
   if (mongoose.connection.readyState !== 1) {
-    throw createHttpError(503, 'Database connection required. Please check MongoDB connection and ensure your IP address is whitelisted in MongoDB Atlas.');
+    // Provide more helpful error message with instructions
+    const errorMsg = 'Database connection required. Please check MongoDB connection and ensure your IP address is whitelisted in MongoDB Atlas. Run "npm run check-ip" in backend folder to get your current IP address.';
+    throw createHttpError(503, errorMsg);
   }
 
   const { email, password } = req.body;

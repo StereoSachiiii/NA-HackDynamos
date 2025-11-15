@@ -14,6 +14,7 @@ const Dashboard = () => {
   const [reminders, setReminders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
   const [activeGoal, setActiveGoal] = useState(null);
   const [timeRange, setTimeRange] = useState('today'); // 'today', 'week', 'month'
 
@@ -94,6 +95,7 @@ const Dashboard = () => {
     const file = e.target.files[0];
     if (!file) return;
 
+    setSelectedFile(file);
     setUploading(true);
     try {
       const result = await uploadImage(file);
@@ -105,8 +107,18 @@ const Dashboard = () => {
     } catch (error) {
       alert('Failed to upload image');
       console.error(error);
+      setSelectedFile(null);
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleClearUpload = () => {
+    setSelectedFile(null);
+    // Reset the file input
+    const fileInput = document.getElementById('meal-photo-upload');
+    if (fileInput) {
+      fileInput.value = '';
     }
   };
 
@@ -158,16 +170,67 @@ const Dashboard = () => {
         </div>
 
         {/* Image Upload */}
-        <div className="card mb-8">
-          <h2 className="text-xl font-semibold mb-4">{t('dashboard.uploadMealPhoto')}</h2>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleImageUpload}
-            disabled={uploading}
-            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
-          />
-          {uploading && <p className="mt-2 text-gray-600">Uploading...</p>}
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-8">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{t('dashboard.uploadMealPhoto')}</h2>
+            {selectedFile && (
+              <button
+                onClick={handleClearUpload}
+                className="text-sm text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 font-medium"
+                disabled={uploading}
+              >
+                {t('common.clear')}
+              </button>
+            )}
+          </div>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+            {t('dashboard.uploadMealPhotoDesc') || 'Upload a photo of your meal to automatically detect and log food items.'}
+          </p>
+          <div className="flex items-center gap-4">
+            <label
+              htmlFor="meal-photo-upload"
+              className={`flex-1 cursor-pointer ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              <input
+                id="meal-photo-upload"
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                disabled={uploading}
+                className="hidden"
+              />
+              <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center hover:border-emerald-500 dark:hover:border-emerald-400 transition-colors">
+                {uploading ? (
+                  <div className="flex flex-col items-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mb-2"></div>
+                    <p className="text-gray-600 dark:text-gray-400">{t('dashboard.uploading') || 'Uploading...'}</p>
+                  </div>
+                ) : selectedFile ? (
+                  <div className="flex flex-col items-center">
+                    <svg className="w-12 h-12 text-emerald-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">{selectedFile.name}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center">
+                    <svg className="w-12 h-12 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {t('dashboard.clickToUpload') || 'Click to upload meal photo'}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {t('dashboard.supportedFormats') || 'PNG, JPG, JPEG up to 5MB'}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </label>
+          </div>
         </div>
 
         {/* Active Goal Banner */}

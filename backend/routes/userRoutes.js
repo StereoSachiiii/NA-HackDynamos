@@ -23,12 +23,22 @@ import { AUTH_RATE_LIMIT_OPTIONS } from '../config/constants.js';
 const router = Router();
 
 // Apply more lenient rate limiting to auth routes
+// In development, create a very lenient limiter or skip entirely
 const authRateLimiter = rateLimit(AUTH_RATE_LIMIT_OPTIONS);
 
+// In development, we can optionally skip rate limiting for testing
+const applyRateLimit = (req, res, next) => {
+  // Skip rate limiting in development if explicitly disabled
+  if (process.env.NODE_ENV === 'development' && process.env.DISABLE_RATE_LIMIT === 'true') {
+    return next();
+  }
+  return authRateLimiter(req, res, next);
+};
+
 // --- Auth Endpoints (Public) ---
-router.post('/register', authRateLimiter, registerValidationRules, registerUser);
-router.post('/login', authRateLimiter, loginValidationRules, authUser);
-router.post('/refresh', authRateLimiter, refreshValidationRules, refreshTokens);
+router.post('/register', applyRateLimit, registerValidationRules, registerUser);
+router.post('/login', applyRateLimit, loginValidationRules, authUser);
+router.post('/refresh', applyRateLimit, refreshValidationRules, refreshTokens);
 router.post('/logout', logoutUser); // Requires refresh token in body to revoke
 
 // --- Password Reset Endpoints (Public) ---

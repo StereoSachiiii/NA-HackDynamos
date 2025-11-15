@@ -13,7 +13,7 @@ const mealLogValidationRules = [
     .isIn(['Breakfast', 'Lunch', 'Dinner', 'Snack', 'Supper', 'Pre-Workout', 'Post-Workout', 'Brunch', 'Elevenses', 'Tea', 'Late-Night Snack', 'Other'])
     .withMessage('Valid mealType required'),
   body('date').optional().isISO8601().toDate(),
-  body('foodEntries').isArray({ min: 1 }).withMessage('foodEntries required'),
+  body('foodEntries').isArray({ min: 0 }).withMessage('foodEntries must be an array'),
   body('foodEntries.*.foodItem')
     .notEmpty()
     .withMessage('foodItem reference required'),
