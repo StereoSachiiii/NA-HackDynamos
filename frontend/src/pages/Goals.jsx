@@ -3,9 +3,11 @@ import { goalService } from '../services/goalService';
 import GoalCard from '../components/Goal/GoalCard';
 import GoalForm from '../components/Goal/GoalForm';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 
 const Goals = () => {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [goals, setGoals] = useState([]);
   const [activeGoal, setActiveGoal] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -79,7 +81,7 @@ const Goals = () => {
         <div className="absolute inset-0 bg-gradient-to-br from-emerald-900/90 via-teal-800/85 to-green-900/90"></div>
         <div className="relative z-10 text-center">
           <h2 className="text-3xl font-bold text-white mb-4 drop-shadow-lg">
-            Please sign in to manage goals
+            {t('goals.title')}
           </h2>
         </div>
       </div>
@@ -105,10 +107,10 @@ const Goals = () => {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
             <div className="mb-4 sm:mb-0">
               <h1 className="text-5xl font-bold text-white mb-3 drop-shadow-lg">
-                🎯 Your Goals
+                🎯 {t('goals.title')}
               </h1>
               <p className="text-xl text-emerald-100 drop-shadow-md">
-                Set and track your personalized nutrition goals
+                {t('goals.createFirst')}
               </p>
             </div>
             <button
@@ -121,7 +123,7 @@ const Goals = () => {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-              Create Goal
+              {t('goals.createGoal')}
             </button>
           </div>
         </div>
@@ -133,7 +135,7 @@ const Goals = () => {
               <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
                 <span className="text-2xl">⭐</span>
               </div>
-              <h2 className="text-2xl font-bold text-gray-800">Active Goal</h2>
+              <h2 className="text-2xl font-bold text-gray-800">{t('goals.activeGoal')}</h2>
             </div>
             <GoalCard
               goal={activeGoal}
@@ -154,7 +156,7 @@ const Goals = () => {
                 </svg>
               </div>
               <h2 className="text-3xl font-bold text-gray-800">
-                {editingGoal ? 'Edit Goal' : 'Create New Goal'}
+                {editingGoal ? t('common.edit') + ' ' + t('goals.title') : t('common.create') + ' ' + t('goals.title')}
               </h2>
             </div>
             <GoalForm
@@ -177,10 +179,10 @@ const Goals = () => {
           <>
             <div className="mb-6">
               <h2 className="text-3xl font-bold text-white drop-shadow-lg mb-2">
-                All Goals
+                {t('goals.allGoals')}
               </h2>
               <p className="text-emerald-100 text-lg drop-shadow-md">
-                {goals.length} {goals.length === 1 ? 'goal' : 'goals'} total
+                {goals.length} {goals.length === 1 ? t('goals.title') : t('goals.allGoals')} {t('common.total') || 'total'}
               </p>
             </div>
             {goals.length === 0 ? (
@@ -191,17 +193,17 @@ const Goals = () => {
                   </svg>
                 </div>
                 <p className="text-gray-700 text-xl font-medium mb-2">
-                  No goals yet
+                  {t('goals.noGoals')}
                 </p>
                 <p className="text-gray-600 mb-6">
-                  Create your first nutrition goal to get started!
+                  {t('goals.createFirst')}
                 </p>
                 {!showForm && (
                   <button
                     onClick={() => setShowForm(true)}
                     className="bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg transform hover:scale-105 transition-all duration-300"
                   >
-                    Create Your First Goal
+                    {t('goals.createFirst')}
                   </button>
                 )}
               </div>

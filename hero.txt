@@ -1,0 +1,416 @@
+# Nutrition Advisor Platform - Technical Overview
+
+## Tech Stack
+- Backend: Node.js + Express, MongoDB (Mongoose), JWT Authentication
+- Frontend: React 18, React Router DOM, Vite, Tailwind CSS, Axios
+- Dev Tools: Nodemon, ESLint, Prettier
+
+## Key Files & Structure
+
+### Backend:
+- `server.js` - Entry point, middleware setup
+- `config/constants.js` - Environment config, JWT secrets, rate limits
+- `config/db.js` - MongoDB connection
+- `routes/api.js` - Main router (mounts sub-routes)
+- `routes/userRoutes.js` - Auth endpoints (login/register/profile)
+- `routes/adminRoutes.js` - Admin CRUD (protected)
+- `middleware/authMiddleware.js` - JWT verification (`protect`)
+- `middleware/adminMiddleware.js` - Role-based access control
+- `controllers/` - Business logic per resource
+- `models/` - Mongoose schemas
+
+### Frontend:
+- `App.jsx` - Router setup, context providers
+- `context/AuthContext.jsx` - User auth state
+- `context/LanguageContext.jsx` - i18n (EN/SI)
+- `services/api.js` - Axios instance with interceptors
+- `services/auth.js` - Auth API calls
+
+## Database Models & Relationships
+
+1. **User** → References: `NutritionGoal`, `MealLog`
+   - Fields: name, email, password (hashed), role (user/admin), preferredLanguage, themeMode, refreshTokens[]
+   - Methods: `matchPassword()`, `addRefreshToken()`, `revokeRefreshToken()`
+
+2. **MealLog** → References: User (ref), FoodItem[] (ref)
+   - Fields: user, date, mealType, foodEntries[], summaryCache, photoEntries[]
+   - Index: `{ user: 1, date: -1 }`
+
+3. **NutritionGoal** → References: User (ref)
+   - Fields: user, goalType, targetCalories, targetMacroSplit, isActive
+   - Index: `{ user: 1, isActive: -1 }`
+
+4. **FoodItem** - Standalone (referenced by MealLog)
+5. **GoalProfile** - Template goals (referenced by NutritionGoal)
+6. **Tip** - Nutrition tips with `localizedMessages[]`
+7. **MealPlanTemplate** - Predefined meal plans
+
+## Authentication Flow
+
+**Type**: JWT (Access + Refresh Tokens)
+
+1. **Login/Register**:
+   - User submits credentials → Backend validates → Returns `accessToken` (15min) + `refreshToken` (7d)
+   - Tokens stored in `localStorage` (frontend)
+   - `refreshToken` also stored in User.refreshTokens[] (backend)
+
+2. **Protected Routes**:
+   - Frontend: `ProtectedRoute` checks `AuthContext.user`
+   - Backend: `protect` middleware verifies JWT from `Authorization: Bearer <token>`
+   - On 401: Frontend attempts refresh → If fails, redirects to login
+
+3. **Token Refresh**:
+   - Access token expires → Frontend calls `/api/v1/users/refresh` with refresh token
+   - Backend validates refresh token → Issues new access token
+
+4. **Logout**:
+   - Revokes refresh token from User.refreshTokens[]
+   - Clears tokens from localStorage
+
+## Authorization (RBAC)
+
+- **Role-based**: `User.role` enum: `['user', 'admin']`
+- **Admin Assignment**: Via `ADMIN_EMAILS` env var (auto-assigned on registration)
+- **Admin Routes**: Protected by `adminMiddleware` (checks `req.user.role === 'admin'`)
+
+## Key Features
+
+1. **i18n**: English/Sinhala (Tamil removed)
+   - Translation files: `locales/en.json`, `locales/si.json`
+   - Context: `LanguageContext` with `t()` function
+   - User preference stored in `User.preferredLanguage`
+
+2. **Rate Limiting**:
+   - Global: 5000 req/15min (dev), 100 (prod)
+   - Auth routes: 500 attempts/15min (dev), 20 (prod)
+   - Uses `express-rate-limit`
+
+3. **Admin Panel**:
+   - Full CRUD for: Users, Foods, Goals, Tips, MealLogs, MealPlans, NutritionGoals
+   - Separate admin login at `/admin/login`
+   - Admin dashboard with stats
+
+4. **Personalized Tips**:
+   - Endpoint: `/api/v1/tips/personalized`
+   - Filters by user's active goals (goalType, seasonTag)
+   - Returns: `{ personalized: [], general: [], all: [] }`
+
+5. **Meal Logging**:
+   - Supports photo uploads
+   - Auto-calculates `summaryCache` (calories, macros, glycemic load)
+   - Indexed for fast user/date queries
+
+## Security
+
+- Password hashing: `bcryptjs` (salt rounds: 10)
+- JWT secrets: From env vars
+- CORS: Configured for specific origins
+- Helmet: Security headers
+- Rate limiting: Per-IP limits
+- Password select: `false` (never returned in queries)
+
+## API Structure
+
+```
+/api/v1/
+  ├── /users (auth, profile)
+  ├── /foods (public food database)
+  ├── /goals (nutrition goals CRUD)
+  ├── /meal-plans (meal plan templates)
+  ├── /logs (meal logs, summaries, insights)
+  ├── /tips (nutrition tips, personalized)
+  └── /admin/* (admin CRUD - protected)
+```
+
+## Frontend Routing
+
+- **Public**: `/`, `/tips`, `/about`, `/login`, `/register`
+- **Protected**: `/dashboard`, `/meal-logs`, `/goals`, `/meal-plans`, `/profile`
+- **Admin**: `/admin/*` (separate layout, protected by admin role)
+
+## State Management
+
+- **React Context API**: AuthContext, LanguageContext, AdminContext
+- **No Redux**: Context-based state management
+- **Local Storage**: Tokens, language preference
+
+## Deployment Notes
+
+- Backend: Port 5000 (default)
+- Frontend: Port 5173 (Vite dev server)
+- Proxy: Vite proxies `/api` → `http://localhost:5000`
+- Environment: `.env` files for both frontend/backend
+
+## Recent Fixes (Latest Update)
+
+### Security & Stability Improvements:
+1. **Token Refresh Race Condition** - Fixed concurrent refresh attempts with queue mechanism
+2. **FoodItem Validation** - All meal log operations now validate food item references exist
+3. **Input Sanitization** - Notes field trimmed and limited to 1000 characters
+4. **Quantity Validation** - Prevents negative or invalid quantities
+5. **MealType Validation** - Fixed enum mismatch (now supports all 11 meal types)
+6. **Rate Limiting** - Added to refresh endpoint to prevent abuse
+7. **Error Messages** - User-friendly 429 rate limit error messages in EN/SI
+
+### Code Quality:
+- Atomic operations for token revocation
+- Comprehensive validation on create/update operations
+- Better error handling and user feedback
+- Admin routes now include same validation as user routes
+
+================================================================================
+IDENTIFIED BUGS & FLAWS
+================================================================================
+
+## ✅ FIXED ISSUES
+
+1. **✅ Token Refresh Race Condition (Frontend)**
+   - Location: `frontend/src/services/api.js`
+   - Fix: Implemented refresh queue/lock mechanism to prevent concurrent refresh attempts
+   - Status: FIXED - Added `isRefreshing` flag and `failedQueue` to queue requests during refresh
+
+2. **✅ Refresh Token Race Condition (Backend)**
+   - Location: `backend/controllers/userController.js`
+   - Fix: Using atomic `findByIdAndUpdate` with `$pull` to revoke tokens
+   - Status: FIXED - Prevents multiple concurrent refresh requests from succeeding
+
+3. **✅ FoodItem Reference Validation**
+   - Location: `backend/controllers/logController.js`, `backend/routes/adminRoutes.js`
+   - Fix: Added validation to check FoodItem exists before creating/updating meal logs
+   - Status: FIXED - Validates all food item references exist in database
+
+4. **✅ Quantity Validation**
+   - Location: `backend/controllers/logController.js`
+   - Fix: Added validation rule `isFloat({ min: 0.01 })` for quantity
+   - Status: FIXED - Prevents negative, zero, or invalid quantities
+
+5. **✅ MealType Enum Mismatch**
+   - Location: `backend/controllers/logController.js`
+   - Fix: Updated validation to include all 11 meal types from model
+   - Status: FIXED - Validation now matches model enum
+
+6. **✅ Rate Limiting on Refresh Endpoint**
+   - Location: `backend/routes/userRoutes.js`
+   - Fix: Added `authRateLimiter` to `/users/refresh` route
+   - Status: FIXED - Prevents abuse of refresh endpoint
+
+7. **✅ Input Sanitization**
+   - Location: `backend/controllers/logController.js`, `backend/routes/adminRoutes.js`
+   - Fix: Added trim and length limit (1000 chars) for notes field
+   - Status: FIXED - Basic sanitization prevents XSS and data overflow
+
+8. **✅ 429 Error Message**
+   - Location: `frontend/src/components/Auth/Login.jsx`, `frontend/src/locales/*.json`
+   - Fix: Added user-friendly rate limit error messages in both languages
+   - Status: FIXED - Shows "Too many login attempts" instead of generic error
+
+## ⚠️ REMAINING ISSUES
+
+1. **Token Storage in localStorage (XSS Vulnerability)**
+   - Location: `frontend/src/utils/token.js`
+   - Issue: JWT tokens stored in localStorage are vulnerable to XSS attacks
+   - Risk: Malicious scripts can steal tokens
+   - Fix: Consider httpOnly cookies (requires CORS/cookie config changes)
+   - Priority: Medium (mitigated by input sanitization and CSP headers)
+
+2. **No CSRF Protection**
+   - Issue: No CSRF tokens for state-changing operations
+   - Risk: Cross-site request forgery attacks
+   - Fix: Implement CSRF tokens or SameSite cookie attributes
+   - Priority: Medium (JWT tokens provide some protection)
+
+3. **Admin Routes Bypass User Ownership Checks**
+   - Location: `backend/routes/adminRoutes.js` (meal-logs, nutrition-goals)
+   - Issue: Admin can create/update meal logs for any user without validation
+   - Risk: Data integrity, unauthorized access
+   - Fix: Add user existence validation, optional ownership checks
+   - Priority: Low (admin is trusted role, but should validate user exists)
+
+4. **Missing FoodItem Validation in computeSummary**
+   - Location: `backend/services/nutritionSummaryService.js` (hydrateEntries)
+   - Issue: Returns null for missing food items but doesn't handle gracefully
+   - Risk: Incorrect totals if food item deleted after meal log creation
+   - Fix: Log warning, use default values, or mark meal log as invalid
+   - Priority: Low (now validated on create/update, but historical data may be affected)
+
+## ERROR HANDLING
+
+13. **Missing Error Handling in Token Refresh**
+    - Location: `frontend/src/services/api.js`
+    - Issue: If refresh fails, redirects immediately without user feedback
+    - Risk: Poor UX, user confusion
+    - Fix: Show error message before redirect
+
+14. **No Retry Logic for Network Errors**
+    - Location: Frontend API calls
+    - Issue: Network failures immediately fail
+    - Risk: Poor UX on unstable connections
+    - Fix: Implement exponential backoff retry
+
+15. **Missing Validation Error Messages in Frontend**
+    - Location: Various forms
+    - Issue: Generic error messages don't help users
+    - Risk: Poor UX, user frustration
+    - Fix: Map validation errors to user-friendly messages
+
+## PERFORMANCE ISSUES
+
+16. **Missing Database Indexes**
+    - Location: Various models
+    - Issue: No indexes on frequently queried fields (e.g., NutritionGoal.goalType, Tip.triggerEvent)
+    - Risk: Slow queries as data grows
+    - Fix: Add compound indexes for common query patterns
+
+17. **N+1 Query Problem in Tips**
+    - Location: `backend/controllers/tipController.js` (getPersonalizedTips)
+    - Issue: Multiple queries for each user goal
+    - Risk: Slow response times
+    - Fix: Use aggregation pipeline or batch queries
+
+18. **No Pagination Limits**
+    - Location: Admin routes, some user routes
+    - Issue: Can request unlimited data
+    - Risk: Memory exhaustion, slow responses
+    - Fix: Enforce max limit (e.g., 100 items per page)
+
+## LOGIC ERRORS
+
+19. **Admin Meal Log Update Doesn't Recompute Summary**
+    - Location: `backend/routes/adminRoutes.js` (PUT /meal-logs/:id)
+    - Issue: Uses findByIdAndUpdate, summaryCache recomputation happens after
+    - Risk: Stale summaryCache if save fails
+    - Fix: Ensure atomic update or use transaction
+
+20. **Missing User Context Update on Profile Change**
+    - Location: `backend/controllers/userController.js` (updateProfile)
+    - Issue: Changes to preferredLanguage don't update req.context immediately
+    - Risk: Inconsistent language in same request
+    - Fix: Update req.context after profile update
+
+21. **Refresh Token Not Rate Limited**
+    - Location: `backend/routes/userRoutes.js`
+    - Issue: Refresh endpoint has no rate limiting
+    - Risk: Brute force attacks, token enumeration
+    - Fix: Add rate limiting to refresh endpoint
+
+22. **Missing Validation for GoalType in NutritionGoal**
+    - Location: `backend/models/NutritionGoal.js`
+    - Issue: goalType is free text, not validated against GoalProfile
+    - Risk: Inconsistent data, broken personalization
+    - Fix: Validate against existing GoalProfile names or use enum
+
+## FRONTEND ISSUES
+
+23. **Token Expiration Check Not Real-Time**
+    - Location: `frontend/src/utils/token.js` (isTokenExpired)
+    - Issue: Only checks on page load, not during session
+    - Risk: Using expired tokens, unnecessary 401s
+    - Fix: Periodic token validation or check before each request
+
+24. **Missing Loading States**
+    - Location: Various components
+    - Issue: Some async operations don't show loading indicators
+    - Risk: Poor UX, user confusion
+    - Fix: Add loading states for all async operations
+
+25. **No Offline Support**
+    - Location: Frontend API calls
+    - Issue: App breaks when offline
+    - Risk: Poor UX, data loss
+    - Fix: Implement service worker, offline queue
+
+26. **Missing Error Boundaries**
+    - Location: React components
+    - Issue: Component errors crash entire app
+    - Risk: Poor UX, lost user data
+    - Fix: Add React Error Boundaries
+
+## DATA CONSISTENCY
+
+27. **Orphaned Data on User Deletion**
+    - Location: `backend/controllers/userController.js` (deleteProfile)
+    - Issue: User deleted but MealLogs, NutritionGoals remain
+    - Risk: Data inconsistency, broken references
+    - Fix: Cascade delete or soft delete with cleanup job
+
+28. **Missing Transaction for Multi-Step Operations**
+    - Location: Meal log creation (summaryCache + insight creation)
+    - Issue: If insight creation fails, meal log saved with incomplete data
+    - Risk: Data inconsistency
+    - Fix: Use MongoDB transactions
+
+29. **summaryCache Can Become Stale**
+    - Location: If FoodItem nutrition data changes after meal log creation
+    - Issue: summaryCache not updated when FoodItem changes
+    - Risk: Incorrect historical data
+    - Fix: Recompute on FoodItem update or mark as "needs recalculation"
+
+## CONFIGURATION ISSUES
+
+30. **Hardcoded API URL in Production**
+    - Location: `frontend/src/services/api.js`
+    - Issue: Falls back to localhost:5000 in production
+    - Risk: Production app won't work
+    - Fix: Require VITE_API_BASE_URL in production
+
+31. **Missing Environment Variable Validation**
+    - Location: `backend/config/constants.js`
+    - Issue: App starts even if critical env vars missing
+    - Risk: Runtime errors, security issues
+    - Fix: Validate required env vars on startup
+
+32. **Rate Limit Not Applied to Refresh Endpoint**
+    - Location: `backend/routes/userRoutes.js`
+    - Issue: `/users/refresh` has no rate limiting
+    - Risk: Abuse, token enumeration attacks
+    - Fix: Add rate limiting to refresh route
+
+## EDGE CASES
+
+33. **Empty FoodEntries Array**
+    - Location: Meal log creation
+    - Issue: Can create meal log with no food entries
+    - Risk: Invalid data, broken summaries
+    - Fix: Require at least one food entry (already in validation but not enforced in admin routes)
+
+34. **Missing Timezone Handling**
+    - Location: Date handling throughout app
+    - Issue: Dates stored/displayed without timezone consideration
+    - Risk: Incorrect date filtering, timezone confusion
+    - Fix: Store UTC, display in user timezone
+
+35. **Photo Upload Not Validated**
+    - Location: Image upload service
+    - Issue: File type/size validation might be bypassed
+    - Risk: Malicious file uploads, storage exhaustion
+    - Fix: Server-side validation, file type checking
+
+## CODE QUALITY
+
+36. **Inconsistent Error Response Format**
+    - Location: Various controllers
+    - Issue: Some return { success: false }, others throw errors
+    - Risk: Frontend error handling complexity
+    - Fix: Standardize error response format
+
+37. **Missing TypeScript**
+    - Issue: No type safety, runtime errors
+    - Risk: Bugs, maintenance difficulty
+    - Fix: Migrate to TypeScript
+
+38. **Missing Unit Tests**
+    - Issue: No test coverage
+    - Risk: Regressions, unknown bugs
+    - Fix: Add comprehensive test suite
+
+39. **Inconsistent Naming Conventions**
+    - Location: Various files
+    - Issue: Mix of camelCase, snake_case
+    - Risk: Code maintainability
+    - Fix: Enforce consistent naming
+
+40. **Missing API Documentation**
+    - Issue: No Swagger/OpenAPI docs
+    - Risk: Integration difficulties, unclear contracts
+    - Fix: Add API documentation
+

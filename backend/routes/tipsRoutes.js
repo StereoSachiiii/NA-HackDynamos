@@ -8,12 +8,16 @@ import {
   updateTip,
   deleteTip,
   getTipById,
+  getPersonalizedTips,
 } from '../controllers/tipController.js';
 
 const router = Router();
 
 // Apply protection middleware to all routes (assuming admin/manager access is required)
 router.use(protect);
+
+// Personalized tips route (must be before /:id route)
+router.get('/personalized', getPersonalizedTips); // GET /api/v1/tips/personalized
 
 // Base route for listing and creating tips
 router

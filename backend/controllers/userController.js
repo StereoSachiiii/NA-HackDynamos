@@ -131,6 +131,12 @@ const authUser = asyncHandler(async (req, res) => {
     return res.status(422).json({ success: false, errors: errors.array() });
   }
 
+  // Check MongoDB connection before attempting login
+  const mongoose = (await import('mongoose')).default;
+  if (mongoose.connection.readyState !== 1) {
+    throw createHttpError(503, 'Database connection required. Please check MongoDB connection and ensure your IP address is whitelisted in MongoDB Atlas.');
+  }
+
   const { email, password } = req.body;
 
   // Use select('+password') to retrieve the password hash
@@ -244,7 +250,7 @@ const refreshTokens = asyncHandler(async (req, res) => {
     throw createHttpError(401, 'User not found');
   }
 
-  // Check if the token exists in the user's valid token list
+  // Check if the token exists in the user's valid token list (atomic check)
   const tokenExists = user.refreshTokens.some(
     entry => entry.token === refreshToken
   );
@@ -255,11 +261,25 @@ const refreshTokens = asyncHandler(async (req, res) => {
     throw createHttpError(401, 'Refresh token revoked or compromised');
   }
 
-  // Revoke the old token (one-time use policy)
-  await user.revokeRefreshToken(refreshToken);
+  // Use atomic operation to revoke token and prevent race conditions
+  // This ensures only one refresh request can succeed with the same token
+  const updateResult = await User.findByIdAndUpdate(
+    decoded.id,
+    {
+      $pull: { refreshTokens: { token: refreshToken } }
+    },
+    { new: true }
+  );
+
+  if (!updateResult) {
+    throw createHttpError(401, 'User not found');
+  }
+
+  // Reload user to get updated refreshTokens array
+  const updatedUser = await User.findById(decoded.id);
   
   // Issue new tokens
-  const tokens = await issueTokens(user);
+  const tokens = await issueTokens(updatedUser);
 
   res.json({
     success: true,

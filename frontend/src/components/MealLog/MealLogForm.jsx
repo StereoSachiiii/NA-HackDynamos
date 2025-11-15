@@ -20,17 +20,41 @@ const MealLogForm = ({ mealLog, onSave, onCancel }) => {
   const [error, setError] = useState('');
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [photoUrl, setPhotoUrl] = useState('');
+  const [foodDetailsMap, setFoodDetailsMap] = useState({}); // Map to store food details
 
   useEffect(() => {
     if (mealLog) {
       const date = new Date(mealLog.date);
+      const entries = mealLog.foodEntries || [];
+      
+      // Fetch food details for existing entries
+      const fetchFoodDetails = async () => {
+        const detailsMap = {};
+        for (const entry of entries) {
+          if (entry.foodItem?._id || entry.foodItem) {
+            try {
+              const foodId = entry.foodItem._id || entry.foodItem;
+              const food = await foodService.getFoodById(foodId);
+              detailsMap[foodId] = food.data || food;
+            } catch (err) {
+              console.error('Failed to fetch food details:', err);
+            }
+          }
+        }
+        setFoodDetailsMap(detailsMap);
+      };
+      
       setFormData({
         mealType: mealLog.mealType || 'Breakfast',
         date: date.toISOString().split('T')[0],
         time: date.toTimeString().slice(0, 5),
-        foodEntries: mealLog.foodEntries || [],
+        foodEntries: entries,
         notes: mealLog.notes || ''
       });
+      
+      if (entries.length > 0) {
+        fetchFoodDetails();
+      }
     }
   }, [mealLog]);
 
@@ -257,21 +281,37 @@ const MealLogForm = ({ mealLog, onSave, onCancel }) => {
           )}
 
           {formData.foodEntries.length > 0 && (
-            <div className="border rounded-lg p-3">
-              <h4 className="text-sm font-semibold mb-2">Selected Foods:</h4>
-              <ul className="space-y-2">
+            <div className="border rounded-lg p-3 bg-gray-50 dark:bg-gray-800">
+              <h4 className="text-sm font-semibold mb-3 text-gray-700 dark:text-gray-300">Selected Foods ({formData.foodEntries.length}):</h4>
+              <ul className="space-y-3">
                 {formData.foodEntries.map((entry, idx) => {
-                  const food = searchResults.find(f => f._id === entry.foodItem) || 
+                  const foodId = entry.foodItem?._id || entry.foodItem;
+                  const food = searchResults.find(f => f._id === foodId) || 
+                               foodDetailsMap[foodId] ||
                                (mealLog?.foodEntries?.[idx]?.foodItem);
+                  
+                  // Calculate nutrition for this entry
+                  const qty = entry.quantity || 100;
+                  const multiplier = qty / 100;
+                  const calories = food?.calories ? Math.round(food.calories * multiplier) : 0;
+                  const protein = food?.protein ? (food.protein * multiplier).toFixed(1) : 0;
+                  const carbs = food?.carbs ? (food.carbs * multiplier).toFixed(1) : 0;
+                  const fat = food?.fat ? (food.fat * multiplier).toFixed(1) : 0;
+                  
                   return (
-                    <li key={idx} className="flex justify-between items-center text-sm">
-                      <span>
-                        {food?.name || entry.foodItem} - {entry.quantity}{entry.unit || 'g'}
-                      </span>
+                    <li key={idx} className="flex justify-between items-start p-2 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-900 dark:text-white">
+                          {food?.name || 'Unknown Food'}
+                        </div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                          {entry.quantity}{entry.unit || 'g'} • {calories} kcal • P:{protein}g C:{carbs}g F:{fat}g
+                        </div>
+                      </div>
                       <button
                         type="button"
                         onClick={() => handleRemoveFood(idx)}
-                        className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-3 py-1 rounded-lg font-semibold hover:from-emerald-600 hover:to-teal-700 transition-all duration-300 shadow-sm hover:shadow-md text-xs"
+                        className="ml-3 bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg font-semibold transition-all duration-300 shadow-sm hover:shadow-md text-xs"
                       >
                         Remove
                       </button>
@@ -279,6 +319,23 @@ const MealLogForm = ({ mealLog, onSave, onCancel }) => {
                   );
                 })}
               </ul>
+              {/* Total Summary */}
+              {formData.foodEntries.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-gray-300 dark:border-gray-600">
+                  <div className="flex justify-between text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    <span>Total:</span>
+                    <span>
+                      {formData.foodEntries.reduce((sum, entry) => {
+                        const foodId = entry.foodItem?._id || entry.foodItem;
+                        const food = foodDetailsMap[foodId] || searchResults.find(f => f._id === foodId);
+                        const qty = entry.quantity || 100;
+                        const multiplier = qty / 100;
+                        return sum + (food?.calories || 0) * multiplier;
+                      }, 0).toFixed(0)} kcal
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

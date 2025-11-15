@@ -10,13 +10,17 @@ import { getReminders } from '../services/reminderService.js';
 // --- Validation Rules for CREATE/UPDATE ---
 const mealLogValidationRules = [
   body('mealType')
-    .isIn(['Breakfast', 'Lunch', 'Dinner', 'Snack', 'Supper'])
+    .isIn(['Breakfast', 'Lunch', 'Dinner', 'Snack', 'Supper', 'Pre-Workout', 'Post-Workout', 'Brunch', 'Elevenses', 'Tea', 'Late-Night Snack', 'Other'])
     .withMessage('Valid mealType required'),
   body('date').optional().isISO8601().toDate(),
   body('foodEntries').isArray({ min: 1 }).withMessage('foodEntries required'),
   body('foodEntries.*.foodItem')
     .notEmpty()
-    .withMessage('foodItem reference required')
+    .withMessage('foodItem reference required'),
+  body('foodEntries.*.quantity')
+    .optional()
+    .isFloat({ min: 0.01 })
+    .withMessage('Quantity must be a positive number')
 ];
 
 // Middleware to check if the log entry exists and belongs to the user
@@ -44,12 +48,28 @@ const createMealLog = asyncHandler(async (req, res) => {
 
   const { mealType, date, foodEntries, notes } = req.body;
 
+  // Validate FoodItem references exist
+  if (foodEntries && foodEntries.length > 0) {
+    const FoodItem = (await import('../models/FoodItem.js')).default;
+    const foodItemIds = foodEntries.map(entry => entry.foodItem);
+    const existingFoodItems = await FoodItem.find({ _id: { $in: foodItemIds } });
+    const existingIds = new Set(existingFoodItems.map(item => item._id.toString()));
+    
+    const missingIds = foodItemIds.filter(id => !existingIds.has(id.toString()));
+    if (missingIds.length > 0) {
+      throw createHttpError(400, `Invalid food item references: ${missingIds.join(', ')}`);
+    }
+  }
+
+  // Basic input sanitization - trim and limit length
+  const sanitizedNotes = notes ? notes.trim().substring(0, 1000) : undefined;
+
   const log = await MealLog.create({
     user: req.user.id,
     mealType,
     date: date || new Date(),
     foodEntries,
-    notes
+    notes: sanitizedNotes
   });
 
   log.summaryCache = await computeSummary(log);
@@ -89,11 +109,26 @@ const updateMealLog = asyncHandler(async (req, res) => {
 
   const log = req.log; // Retrieved by getMealLogById
 
-  // Apply updates
+  // Validate FoodItem references if foodEntries are being updated
+  if (req.body.foodEntries && req.body.foodEntries.length > 0) {
+    const FoodItem = (await import('../models/FoodItem.js')).default;
+    const foodItemIds = req.body.foodEntries.map(entry => entry.foodItem);
+    const existingFoodItems = await FoodItem.find({ _id: { $in: foodItemIds } });
+    const existingIds = new Set(existingFoodItems.map(item => item._id.toString()));
+    
+    const missingIds = foodItemIds.filter(id => !existingIds.has(id.toString()));
+    if (missingIds.length > 0) {
+      throw createHttpError(400, `Invalid food item references: ${missingIds.join(', ')}`);
+    }
+  }
+
+  // Apply updates with sanitization
   log.mealType = req.body.mealType || log.mealType;
   log.date = req.body.date || log.date;
   log.foodEntries = req.body.foodEntries || log.foodEntries;
-  log.notes = req.body.notes ?? log.notes; // Use ?? to allow explicit null/empty string notes
+  log.notes = req.body.notes !== undefined 
+    ? (req.body.notes ? req.body.notes.trim().substring(0, 1000) : null)
+    : log.notes; // Use ?? to allow explicit null/empty string notes
 
   // Recompute summary
   log.summaryCache = await computeSummary(log);

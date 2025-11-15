@@ -3,8 +3,32 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    color-scheme: light dark;
+  }
+  
   body {
-    @apply bg-white text-gray-900;
+    @apply bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+  
+  html.dark {
+    color-scheme: dark;
+  }
+  
+  html:not(.dark) {
+    color-scheme: light;
+  }
+}
+
+@layer utilities {
+  /* Ensure dark mode gradients override light mode gradients with higher specificity */
+  html.dark nav.bg-gradient-to-r {
+    background-image: linear-gradient(to right, rgb(31 41 55), rgb(17 24 39), rgb(31 41 55));
+  }
+  
+  html.dark footer .bg-gradient-to-br {
+    background-image: linear-gradient(to bottom right, rgb(31 41 55), rgb(17 24 39), rgb(31 41 55));
   }
 }
 

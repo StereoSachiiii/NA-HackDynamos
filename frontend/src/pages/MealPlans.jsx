@@ -1,13 +1,18 @@
 import { useState, useEffect } from 'react';
 import { mealPlanService } from '../services/mealPlanService';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
+import MealPlanDetailModal from '../components/MealPlan/MealPlanDetailModal';
 
 const MealPlans = () => {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [mealPlans, setMealPlans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingPlan, setEditingPlan] = useState(null);
+  const [selectedPlanId, setSelectedPlanId] = useState(null);
+  const [filterGoalType, setFilterGoalType] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -18,16 +23,11 @@ const MealPlans = () => {
   // Professional nutrition background image
   const backgroundImage = 'https://images.unsplash.com/photo-1495521821757-a1efb6729352?w=1920&q=80';
 
-  useEffect(() => {
-    if (user) {
-      fetchMealPlans();
-    }
-  }, [user]);
-
   const fetchMealPlans = async () => {
     try {
       setLoading(true);
-      const response = await mealPlanService.getMealPlans();
+      const params = filterGoalType ? { goalType: filterGoalType } : {};
+      const response = await mealPlanService.getMealPlans(params);
       setMealPlans(response.data || []);
     } catch (error) {
       console.error('Failed to fetch meal plans:', error);
@@ -36,6 +36,12 @@ const MealPlans = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (user) {
+      fetchMealPlans();
+    }
+  }, [user, filterGoalType]);
 
   const handleCreatePlan = async (e) => {
     e.preventDefault();
@@ -106,10 +112,10 @@ const MealPlans = () => {
         <div className="relative z-10 text-center max-w-2xl mx-auto px-4">
           <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-8 border border-emerald-200">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              Please sign in to view meal plans
+              {t('mealPlans.signInToView')}
             </h2>
             <p className="text-gray-600">
-              Create and manage personalized meal plans for your nutrition goals.
+              {t('mealPlans.signInDescription')}
             </p>
           </div>
         </div>
@@ -160,10 +166,10 @@ const MealPlans = () => {
                 </div>
                 <div>
                   <h1 className="text-5xl font-bold text-white mb-2 drop-shadow-lg">
-                    Meal Plans
+                    {t('mealPlans.title')}
                   </h1>
                   <p className="text-xl text-emerald-100 drop-shadow-md">
-                    Create and manage personalized meal plans
+                    {t('mealPlans.subtitle')}
                   </p>
                 </div>
               </div>
@@ -177,17 +183,51 @@ const MealPlans = () => {
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
-                  Cancel
+                  {t('common.cancel')}
                 </>
               ) : (
                 <>
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
-                  Create Custom Plan
+                  {t('mealPlans.createPlan')}
                 </>
               )}
             </button>
+          </div>
+
+          {/* Filter Section */}
+          <div className="bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm rounded-xl shadow-lg p-4 border border-white/20 mb-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                </svg>
+                {t('mealPlans.filterByGoal')}
+              </label>
+              <select
+                value={filterGoalType}
+                onChange={(e) => setFilterGoalType(e.target.value)}
+                className="input-field w-full sm:w-64 border-2 border-emerald-200 dark:border-gray-600 focus:border-emerald-500 dark:bg-gray-700 dark:text-white"
+              >
+                <option value="">{t('mealPlans.allGoalTypes')}</option>
+                <option value="Weight Loss">Weight Loss</option>
+                <option value="Muscle Gain">Muscle Gain</option>
+                <option value="Maintenance">Maintenance</option>
+                <option value="Athletic Performance">Athletic Performance</option>
+                <option value="General Health">General Health</option>
+                <option value="Diabetes">Diabetes</option>
+                <option value="Student Focus">Student Focus</option>
+              </select>
+              {filterGoalType && (
+                <button
+                  onClick={() => setFilterGoalType('')}
+                  className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-semibold hover:from-emerald-600 hover:to-teal-700 transition-all duration-300 shadow-md hover:shadow-lg text-sm"
+                >
+                  {t('mealPlans.clearFilter')}
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -201,13 +241,13 @@ const MealPlans = () => {
                 </svg>
               </div>
               <h2 className="text-2xl font-bold text-gray-800">
-                {editingPlan ? 'Edit Custom Meal Plan' : 'Create Custom Meal Plan'}
+                {editingPlan ? t('mealPlans.editPlan') : t('mealPlans.createFirstPlan')}
               </h2>
             </div>
             <form onSubmit={editingPlan ? handleUpdatePlan : handleCreatePlan} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Plan Name *
+                  {t('mealPlans.planName')} *
                 </label>
                 <input
                   type="text"
@@ -220,7 +260,7 @@ const MealPlans = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Description
+                  {t('mealPlans.description')}
                 </label>
                 <textarea
                   value={formData.description}
@@ -232,7 +272,7 @@ const MealPlans = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Goal Type *
+                  {t('mealPlans.goalType')} *
                 </label>
                 <select
                   value={formData.goalType}
@@ -252,7 +292,7 @@ const MealPlans = () => {
                   type="submit" 
                   className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-6 py-3 rounded-xl font-semibold hover:from-emerald-600 hover:to-teal-700 transition-all duration-300 shadow-lg hover:shadow-xl flex-1"
                 >
-                  {editingPlan ? 'Update Plan' : 'Create Plan'}
+                  {editingPlan ? t('mealPlans.updatePlan') : t('common.create')}
                 </button>
                 <button
                   type="button"
@@ -263,7 +303,7 @@ const MealPlans = () => {
                   }}
                   className="bg-white text-emerald-600 border-2 border-emerald-600 px-6 py-3 rounded-xl font-semibold hover:bg-emerald-50 transition-all duration-300 shadow-md hover:shadow-lg flex-1"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
               </div>
             </form>
@@ -275,17 +315,17 @@ const MealPlans = () => {
           <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-12 text-center border border-white/20 animate-fadeIn">
             <div className="text-6xl mb-4">📋</div>
             <p className="text-gray-700 text-xl font-semibold mb-2">
-              No meal plans available.
+              {t('mealPlans.noPlans')}
             </p>
             <p className="text-gray-600 mb-6">
-              Create your first custom plan to get started!
+              {t('mealPlans.createFirst')}
             </p>
             {!showCreateForm && (
               <button
                 onClick={() => setShowCreateForm(true)}
                 className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-8 py-3 rounded-xl font-semibold hover:from-emerald-600 hover:to-teal-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
               >
-                Create Your First Meal Plan
+                {t('mealPlans.createFirstPlan')}
               </button>
             )}
           </div>
@@ -303,7 +343,7 @@ const MealPlans = () => {
                 <div className="flex flex-wrap gap-2 mb-4">
                   {plan.isCustom && (
                     <span className="inline-block px-3 py-1 bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-xs font-semibold rounded-full shadow-md">
-                      Custom Plan
+                      {t('mealPlans.customPlan')}
                     </span>
                   )}
                   {plan.goalType && (
@@ -313,7 +353,7 @@ const MealPlans = () => {
                   )}
                   {plan.days && plan.days.length > 0 && (
                     <span className="inline-block px-3 py-1 bg-teal-100 text-teal-700 text-xs font-semibold rounded-full">
-                      {plan.days.length} day{plan.days.length !== 1 ? 's' : ''}
+                      {plan.days.length} {t('mealPlans.days')}
                     </span>
                   )}
                 </div>
@@ -324,23 +364,38 @@ const MealPlans = () => {
                         onClick={() => handleEditPlan(plan)}
                         className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-semibold hover:from-emerald-600 hover:to-teal-700 transition-all duration-300 shadow-md hover:shadow-lg text-sm"
                       >
-                        Edit
+                        {t('common.edit')}
                       </button>
                       <button
                         onClick={() => handleDeletePlan(plan._id || plan.id)}
                         className="bg-gradient-to-r from-emerald-600 to-teal-700 text-white px-4 py-2 rounded-lg font-semibold hover:from-emerald-700 hover:to-teal-800 transition-all duration-300 shadow-md hover:shadow-lg text-sm"
                       >
-                        Delete
+                        {t('common.delete')}
                       </button>
                     </>
                   )}
-                  <button className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-semibold hover:from-emerald-600 hover:to-teal-700 transition-all duration-300 shadow-md hover:shadow-lg text-sm">
-                    View Details
+                  <button 
+                    onClick={() => setSelectedPlanId(plan._id || plan.id)}
+                    className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-semibold hover:from-emerald-600 hover:to-teal-700 transition-all duration-300 shadow-md hover:shadow-lg text-sm"
+                  >
+                    {t('mealPlans.viewDetails')}
                   </button>
                 </div>
               </div>
             ))}
           </div>
+        )}
+
+        {/* Meal Plan Detail Modal */}
+        {selectedPlanId && (
+          <MealPlanDetailModal
+            planId={selectedPlanId}
+            onClose={() => setSelectedPlanId(null)}
+            onApply={() => {
+              setSelectedPlanId(null);
+              // Optionally refresh meal logs if needed
+            }}
+          />
         )}
       </div>
     </div>

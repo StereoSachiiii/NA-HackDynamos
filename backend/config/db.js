@@ -4,6 +4,9 @@ import { MONGO_URI } from './constants.js';
 
 let isConnected = false;
 
+// Disable Mongoose buffering to fail fast when not connected
+mongoose.set('bufferCommands', false);
+
 const connectDB = async () => {
   if (!MONGO_URI) {
     logger.warn(

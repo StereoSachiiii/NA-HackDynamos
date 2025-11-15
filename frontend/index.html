@@ -5,6 +5,25 @@
     <link rel="icon" type="image/png" href="/GovResolve (1).png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Nutrition Advisor</title>
+    <script>
+      // Apply theme immediately before React loads to prevent flash
+      (function() {
+        const themeMode = localStorage.getItem('themeMode') || 'system';
+        let isDark = false;
+        
+        if (themeMode === 'system') {
+          isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        } else {
+          isDark = themeMode === 'dark';
+        }
+        
+        if (isDark) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

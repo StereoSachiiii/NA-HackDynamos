@@ -7,10 +7,11 @@ import api from './api';
 export const mealPlanService = {
   /**
    * Get all meal plans (public and user's custom plans)
+   * @param {Object} params - Query parameters (goalType, seasonTag, etc.)
    * @returns {Promise} API response with meal plans
    */
-  getMealPlans: async () => {
-    const response = await api.get('/meal-plans');
+  getMealPlans: async (params = {}) => {
+    const response = await api.get('/meal-plans', { params });
     return response.data;
   },
 

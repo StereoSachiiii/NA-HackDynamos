@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -9,6 +10,7 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -21,13 +23,16 @@ const Login = () => {
     } catch (err) {
       console.error('Login error:', err);
       
-      // Handle network errors specifically
+      // Handle specific error types
       if (err.code === 'ERR_NETWORK' || err.message?.includes('Network Error') || !err.response) {
-        setError('Network error: Cannot connect to server. Please ensure the backend is running on http://localhost:5000');
+        setError(t('login.networkError'));
+      } else if (err.response?.status === 429) {
+        // Rate limit error - show user-friendly message
+        setError(t('login.rateLimitError'));
       } else if (err.response?.status === 401) {
-        setError('Invalid email or password. Please try again.');
+        setError(t('login.invalidCredentials'));
       } else {
-        const errorMessage = err.response?.data?.message || err.response?.data?.error || err.message || 'Login failed. Please try again.';
+        const errorMessage = err.response?.data?.message || err.response?.data?.error || err.message || t('login.loginFailed');
         setError(errorMessage);
       }
     } finally {
@@ -63,10 +68,10 @@ const Login = () => {
               </svg>
             </div>
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-800 mb-2">
-              Welcome Back
+              {t('login.title')}
             </h2>
             <p className="text-gray-600 text-sm">
-              Sign in to continue your nutrition journey
+              {t('login.subtitle')}
             </p>
           </div>
 
@@ -86,7 +91,7 @@ const Login = () => {
               {/* Email Input */}
               <div>
                 <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-2">
-                  Email Address
+                  {t('login.email')}
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -102,7 +107,7 @@ const Login = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all duration-200 bg-white/50 backdrop-blur-sm"
-                    placeholder="Enter your email"
+                    placeholder={t('login.enterEmail')}
                   />
                 </div>
               </div>
@@ -110,7 +115,7 @@ const Login = () => {
               {/* Password Input */}
               <div>
                 <label htmlFor="password" className="block text-sm font-semibold text-gray-700 mb-2">
-                  Password
+                  {t('login.password')}
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -126,7 +131,7 @@ const Login = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all duration-200 bg-white/50 backdrop-blur-sm"
-                    placeholder="Enter your password"
+                    placeholder={t('login.enterPassword')}
                   />
                 </div>
               </div>
@@ -138,7 +143,7 @@ const Login = () => {
                 to="/forgot-password" 
                 className="text-sm font-medium text-green-600 hover:text-green-700 transition-colors duration-200 hover:underline"
               >
-                Forgot password?
+                {t('login.forgotPassword')}
               </Link>
             </div>
 
@@ -155,11 +160,11 @@ const Login = () => {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    Signing in...
+                    {t('login.signingIn')}
                   </>
                 ) : (
                   <>
-                    Sign In
+                    {t('login.signIn')}
                     <svg className="ml-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                     </svg>
@@ -174,19 +179,19 @@ const Login = () => {
                 <div className="w-full border-t border-gray-300"></div>
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-white/95 text-gray-500">New to our platform?</span>
+                <span className="px-4 bg-white/95 text-gray-500">{t('login.newToPlatform')}</span>
               </div>
             </div>
 
             {/* Sign Up Link */}
             <div className="text-center">
               <p className="text-sm text-gray-600">
-                Don't have an account?{' '}
+                {t('login.noAccount')}{' '}
                 <Link 
                   to="/register" 
                   className="font-semibold text-green-600 hover:text-green-700 transition-colors duration-200 hover:underline"
                 >
-                  Create an account
+                  {t('login.createAccount')}
                 </Link>
               </p>
             </div>

@@ -31,6 +31,22 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// Token refresh queue to prevent race conditions
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach(prom => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  
+  failedQueue = [];
+};
+
 // Response interceptor to handle token refresh
 api.interceptors.response.use(
   (response) => response,
@@ -38,7 +54,22 @@ api.interceptors.response.use(
     const originalRequest = error.config;
 
     if (error.response?.status === 401 && !originalRequest._retry) {
+      if (isRefreshing) {
+        // If already refreshing, queue this request
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        })
+          .then(token => {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            return api(originalRequest);
+          })
+          .catch(err => {
+            return Promise.reject(err);
+          });
+      }
+
       originalRequest._retry = true;
+      isRefreshing = true;
 
       try {
         const refreshToken = getRefreshToken();
@@ -53,12 +84,16 @@ api.interceptors.response.use(
         const { accessToken, refreshToken: newRefreshToken } = response.data.tokens;
         setTokens(accessToken, newRefreshToken);
 
+        processQueue(null, accessToken);
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
         return api(originalRequest);
       } catch (refreshError) {
+        processQueue(refreshError, null);
         clearTokens();
         window.location.href = '/login';
         return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
       }
     }
 

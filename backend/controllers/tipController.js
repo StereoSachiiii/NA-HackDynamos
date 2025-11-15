@@ -2,6 +2,8 @@ import { body, validationResult } from 'express-validator';
 import asyncHandler from '../utils/asyncHandler.js';
 import createHttpError from '../utils/createHttpError.js';
 import Tip from '../models/Tip.js';
+import NutritionGoal from '../models/NutritionGoal.js';
+import GoalProfile from '../models/GoalProfile.js';
 
 // --- Validation Rules for CREATE/UPDATE ---
 const tipValidationRules = [
@@ -150,6 +152,71 @@ const deleteTip = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Get personalized tips for the authenticated user
+// @route   GET /api/v1/tips/personalized
+// @access  Private
+const getPersonalizedTips = asyncHandler(async (req, res) => {
+  const userLanguage = req.user?.preferredLanguage || req.context?.language || 'EN';
+  
+  // Get user's active goals
+  const activeGoals = await NutritionGoal.find({ 
+    user: req.user.id, 
+    isActive: true 
+  }).sort({ createdAt: -1 });
+
+  let personalizedTips = [];
+  let generalTips = [];
+  
+  if (activeGoals.length > 0) {
+    // Get goal types and season tags from active goals
+    const goalTypes = activeGoals.map(goal => goal.goalType.toLowerCase());
+    const goalProfiles = await GoalProfile.find({ name: { $in: activeGoals.map(g => g.goalType) } });
+    const seasonTags = goalProfiles.map(profile => profile.seasonTag).filter(Boolean);
+    
+    // Build query for personalized tips
+    const personalizedQuery = {
+      isActive: true,
+      $or: [
+        { triggerEvent: { $in: goalTypes } },
+        { seasonTag: { $in: seasonTags } }
+      ]
+    };
+    
+    personalizedTips = await Tip.find(personalizedQuery)
+      .sort({ createdAt: -1 })
+      .limit(20);
+  }
+  
+  // Get general tips (all active tips not in personalized)
+  const personalizedTipIds = personalizedTips.map(t => t._id);
+  const generalQuery = {
+    isActive: true,
+    ...(personalizedTipIds.length > 0 ? { _id: { $nin: personalizedTipIds } } : {})
+  };
+  
+  generalTips = await Tip.find(generalQuery)
+    .sort({ createdAt: -1 })
+    .limit(20);
+  
+  // Format all tips with localization
+  const formatTips = (tips) => tips.map(tip => formatTipResponse(tip, userLanguage));
+  
+  res.json({
+    success: true,
+    data: {
+      personalized: formatTips(personalizedTips),
+      general: formatTips(generalTips),
+      all: formatTips([...personalizedTips, ...generalTips])
+    },
+    meta: {
+      personalizedCount: personalizedTips.length,
+      generalCount: generalTips.length,
+      totalCount: personalizedTips.length + generalTips.length,
+      hasActiveGoals: activeGoals.length > 0
+    }
+  });
+});
+
 export {
   tipValidationRules,
   createTip,
@@ -158,4 +225,5 @@ export {
   updateTip,
   deleteTip,
   getTipById,
+  getPersonalizedTips,
 };

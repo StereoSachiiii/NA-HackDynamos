@@ -59,14 +59,32 @@ const COOKIE_OPTIONS = {
 
 // Rate Limiting
 const RATE_LIMIT_WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000;
-const RATE_LIMIT_MAX = Number(process.env.RATE_LIMIT_MAX) || 100;
+// Increase limit for development, reduce for production
+const RATE_LIMIT_MAX = Number(process.env.RATE_LIMIT_MAX) || (NODE_ENV === 'production' ? 100 : 5000);
 
 const RATE_LIMIT_OPTIONS = {
   windowMs: RATE_LIMIT_WINDOW_MS,
   max: RATE_LIMIT_MAX,
   standardHeaders: true,
   legacyHeaders: false,
-  message: 'Too many requests from this IP, please try again later.'
+  message: 'Too many requests from this IP, please try again later.',
+  skip: (req) => {
+    // Skip rate limiting for health checks and metrics
+    return req.path === '/health' || req.path === '/metrics';
+  }
+};
+
+// More lenient rate limit for auth routes (login/register)
+// In development, allow many attempts; in production, be more strict
+const AUTH_RATE_LIMIT_OPTIONS = {
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: NODE_ENV === 'production' ? 20 : 500, // 20 attempts per 15 min in prod, 500 in dev
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: 'Too many login attempts, please try again later.',
+  skipSuccessfulRequests: true, // Don't count successful logins
+  // In development, use a separate store that resets on server restart
+  store: NODE_ENV === 'development' ? undefined : undefined // Use default in-memory store
 };
 
 // CORS
@@ -126,6 +144,7 @@ export {
   RATE_LIMIT_WINDOW_MS,
   RATE_LIMIT_MAX,
   RATE_LIMIT_OPTIONS,
+  AUTH_RATE_LIMIT_OPTIONS,
   
   // CORS
   CORS_OPTIONS,

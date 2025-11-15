@@ -3,9 +3,11 @@ import { mealLogService } from '../services/mealLogService';
 import MealLogCard from '../components/MealLog/MealLogCard';
 import MealLogForm from '../components/MealLog/MealLogForm';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 
 const MealLogs = () => {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [mealLogs, setMealLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -72,10 +74,10 @@ const MealLogs = () => {
         <div className="relative z-10 text-center max-w-2xl mx-auto px-4">
           <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-8 border border-emerald-200">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              Please sign in to view meal logs
+              {t('mealLogs.signInToView')}
             </h2>
             <p className="text-gray-600">
-              Track your meals and nutrition journey with personalized logging.
+              {t('mealLogs.signInDescription')}
             </p>
           </div>
         </div>
@@ -126,10 +128,10 @@ const MealLogs = () => {
                 </div>
                 <div>
                   <h1 className="text-5xl font-bold text-white mb-2 drop-shadow-lg">
-                    Meal Logging
+                    {t('mealLogs.title')}
                   </h1>
                   <p className="text-xl text-emerald-100 drop-shadow-md">
-                    Track your nutrition journey with comprehensive meal logging
+                    {t('mealLogs.subtitle')}
                   </p>
                 </div>
               </div>
@@ -144,7 +146,7 @@ const MealLogs = () => {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-              Add Meal Log
+              {t('mealLogs.addMealLog')}
             </button>
           </div>
 
@@ -155,7 +157,7 @@ const MealLogs = () => {
                 <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
-                Filter by Date
+                {t('mealLogs.filterByDate')}
               </label>
               <div className="flex items-center gap-3 flex-1">
                 <input
@@ -169,7 +171,7 @@ const MealLogs = () => {
                     onClick={() => setDateFilter('')}
                     className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-lg font-semibold hover:from-emerald-600 hover:to-teal-700 transition-all duration-300 shadow-md hover:shadow-lg text-sm"
                   >
-                    Clear
+                    {t('common.cancel')}
                   </button>
                 )}
               </div>
@@ -187,7 +189,7 @@ const MealLogs = () => {
                 </svg>
               </div>
               <h2 className="text-2xl font-bold text-gray-800">
-                {editingLog ? 'Edit Meal Log' : 'Create New Meal Log'}
+                {editingLog ? t('common.edit') + ' ' + t('mealLogs.title') : t('common.create') + ' ' + t('mealLogs.title')}
               </h2>
             </div>
             <MealLogForm
@@ -206,17 +208,17 @@ const MealLogs = () => {
           <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-12 text-center border border-white/20 animate-fadeIn">
             <div className="text-6xl mb-4">📝</div>
             <p className="text-gray-700 text-xl font-semibold mb-2">
-              {dateFilter ? 'No meal logs found for this date.' : 'No meal logs yet.'}
+              {dateFilter ? t('mealLogs.noLogs') : t('mealLogs.noLogs')}
             </p>
             <p className="text-gray-600 mb-6">
-              {dateFilter ? 'Try selecting a different date.' : 'Start tracking your meals to see them here!'}
+              {dateFilter ? t('mealLogs.createFirst') : t('mealLogs.createFirst')}
             </p>
             {!showForm && (
               <button
                 onClick={() => setShowForm(true)}
                 className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-8 py-3 rounded-xl font-semibold hover:from-emerald-600 hover:to-teal-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
               >
-                Create Your First Meal Log
+                {t('mealLogs.createFirst')}
               </button>
             )}
           </div>
