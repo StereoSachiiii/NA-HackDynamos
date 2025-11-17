@@ -31,3 +31,4 @@ const sliderImages = [
 - The slider includes a dark overlay (40% opacity) to ensure text readability
 - All images should be related to nutrition, healthy food, or wellness for best visual consistency
 
+
